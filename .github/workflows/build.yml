@@ -17,8 +17,8 @@ jobs:
       - name: Build PS2 game
         uses: docker://ps2dev/ps2dev:latest
         with:
-          entrypoint: /bin/bash
-          args: -lc "make"
+          entrypoint: /bin/sh
+          args: -c "make"
 
       - name: Check output
         run: test -f RED_CITY.ELF

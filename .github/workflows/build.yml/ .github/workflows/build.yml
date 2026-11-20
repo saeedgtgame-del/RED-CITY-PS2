@@ -1,3 +1,4 @@
+
 name: Build RED CITY PS2
 
 on:
@@ -11,17 +12,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download project
+      - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Build PS2 ELF
+      - name: Setup PS2 development tools
         uses: docker://ps2dev/ps2dev:latest
         with:
-          entrypoint: /bin/sh
-          args: -c "cd $GITHUB_WORKSPACE && make"
+          entrypoint: /bin/bash
+          args: -lc "source /opt/ps2dev/ps2sdk/ee/eevars.sh && make"
 
-      - name: Save game file
+      - name: Check output
+        run: |
+          ls -la
+          test -f RED_CITY.ELF
+
+      - name: Upload PS2 game
         uses: actions/upload-artifact@v4
         with:
           name: RED-CITY-PS2
           path: RED_CITY.ELF
+          

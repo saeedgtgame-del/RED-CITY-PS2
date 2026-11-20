@@ -1,0 +1,27 @@
+name: Build RED CITY PS2
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download project
+        uses: actions/checkout@v4
+
+      - name: Build PS2 ELF
+        uses: docker://ps2dev/ps2dev:latest
+        with:
+          entrypoint: /bin/sh
+          args: -c "cd $GITHUB_WORKSPACE && make"
+
+      - name: Save game file
+        uses: actions/upload-artifact@v4
+        with:
+          name: RED-CITY-PS2
+          path: RED_CITY.ELF

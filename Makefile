@@ -3,7 +3,7 @@ EE_BIN = RED_CITY.ELF
 
 EE_OBJS = src/main.o
 
-EE_LIBS = -ldebug
+EE_LIBS = -lpad -ldebug
 
 all: $(EE_BIN)
 

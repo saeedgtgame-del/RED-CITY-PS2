@@ -1,3 +1,4 @@
+
 name: Build RED CITY PS2
 
 on:
@@ -15,10 +16,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build PS2 game
-        uses: docker://ps2dev/ps2dev:latest
-        with:
-          entrypoint: /bin/sh
-          args: -c "make"
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/src" \
+            -w /src \
+            ps2dev/ps2dev:latest \
+            sh -c "make"
 
       - name: Check output
         run: test -f RED_CITY.ELF
@@ -28,3 +31,4 @@ jobs:
         with:
           name: RED-CITY-PS2
           path: RED_CITY.ELF
+          

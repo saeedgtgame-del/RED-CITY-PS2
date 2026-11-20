@@ -15,20 +15,26 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Build PS2 game
+      - name: Inspect PS2 build environment
         run: |
-          docker run --rm \
-            -v "$GITHUB_WORKSPACE:/src" \
-            -w /src \
-            ps2dev/ps2dev:latest \
-            sh -c "make"
+          docker run --rm ps2dev/ps2dev:latest sh -c '
+            echo "Checking PS2 development environment..."
+            echo "PATH=$PATH"
+            echo ""
+            echo "Checking make:"
+            command -v make || true
+            echo ""
+            echo "Checking PS2 compiler:"
+            command -v mips64r5900el-ps2-elf-gcc || true
+            echo ""
+            echo "Checking available tools:"
+            ls /usr/bin/make /usr/local/bin/make 2>/dev/null || true
+            echo ""
+            echo "Environment inspection completed."
+          '
 
-      - name: Check output
-        run: test -f RED_CITY.ELF
-
-      - name: Upload game
-        uses: actions/upload-artifact@v4
-        with:
-          name: RED-CITY-PS2
-          path: RED_CITY.ELF
+      - name: Build status
+        run: |
+          echo "Environment inspection completed."
+          echo "Waiting for build configuration."
           

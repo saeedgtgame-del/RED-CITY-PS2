@@ -1,249 +1,136 @@
-/*
-# _____     ___ ____     ___ ____
-#  ____|   |    ____|   |        | |____|
-# |     ___|   |____ ___|    ____| |    \    PS2DEV Open Source Project.
-#-----------------------------------------------------------------------
-# (c) 2005 Naomi Peori <naomi@peori.ca>
-# Licenced under Academic Free License version 2.0
-# Review ps2sdk README & LICENSE files for further details.
-#
-*/
 
 #include <kernel.h>
 #include <stdlib.h>
 #include <malloc.h>
 #include <tamtypes.h>
 #include <math3d.h>
-
 #include <packet.h>
-
 #include <dma_tags.h>
 #include <gif_tags.h>
 #include <gs_psm.h>
-
 #include <dma.h>
-
 #include <graph.h>
-
 #include <draw.h>
 #include <draw3d.h>
 
-#include "mesh_data.c"
+#define SCREEN_W 640
+#define SCREEN_H 512
 
-VECTOR object_position = { 0.00f, 0.00f, 0.00f, 1.00f };
-VECTOR object_rotation = { 0.00f, 0.00f, 0.00f, 1.00f };
+static framebuffer_t frame;
+static zbuffer_t z;
+static packet_t *packet;
 
-VECTOR camera_position = { 0.00f, 0.00f, 100.00f, 1.00f };
-VECTOR camera_rotation = { 0.00f, 0.00f,   0.00f, 1.00f };
-
-void init_gs(framebuffer_t *frame, zbuffer_t *z)
+static void setup_screen(void)
 {
+    frame.width = SCREEN_W;
+    frame.height = SCREEN_H;
+    frame.mask = 0;
+    frame.psm = GS_PSM_32;
+    frame.address = graph_vram_allocate(
+        frame.width, frame.height, frame.psm, GRAPH_ALIGN_PAGE);
 
-	// Define a 32-bit 640x512 framebuffer.
-	frame->width = 640;
-	frame->height = 512;
-	frame->mask = 0;
-	frame->psm = GS_PSM_32;
-	frame->address = graph_vram_allocate(frame->width,frame->height, frame->psm, GRAPH_ALIGN_PAGE);
+    z.enable = DRAW_ENABLE;
+    z.mask = 0;
+    z.method = ZTEST_METHOD_GREATER_EQUAL;
+    z.zsm = GS_ZBUF_32;
+    z.address = graph_vram_allocate(
+        frame.width, frame.height, z.zsm, GRAPH_ALIGN_PAGE);
 
-	// Enable the zbuffer.
-	z->enable = DRAW_ENABLE;
-	z->mask = 0;
-	z->method = ZTEST_METHOD_GREATER_EQUAL;
-	z->zsm = GS_ZBUF_32;
-	z->address = graph_vram_allocate(frame->width,frame->height,z->zsm, GRAPH_ALIGN_PAGE);
+    graph_initialize(frame.address, frame.width,
+                     frame.height, frame.psm, 0, 0);
 
-	// Initialize the screen and tie the first framebuffer to the read circuits.
-	graph_initialize(frame->address,frame->width,frame->height,frame->psm,0,0);
+    packet = packet_init(100, PACKET_NORMAL);
 
+    qword_t *q = packet->data;
+    q = draw_setup_environment(q, 0, &frame, &z);
+    q = draw_primitive_xyoffset(q, 0, 2048-320, 2048-256);
+    q = draw_finish(q);
+
+    dma_channel_send_normal(
+        DMA_CHANNEL_GIF, packet->data,
+        q - packet->data, 0, 0);
+
+    dma_wait_fast();
 }
 
-void init_drawing_environment(framebuffer_t *frame, zbuffer_t *z)
+static void rectangle(qword_t **q, float x1, float y1,
+                      float x2, float y2, int r, int g, int b)
 {
+    PACK_GIFTAG(*q, GIF_SET_TAG(4, 1, 0, 0, 0, 1),
+                GIF_REG_AD);
+    (*q)++;
 
-	packet_t *packet = packet_init(16,PACKET_NORMAL);
+    PACK_GIFTAG(*q, GIF_SET_PRIM(6, 0, 0, 0, 0, 0, 0, 0, 0),
+                GIF_REG_PRIM);
+    (*q)++;
 
-	// This is our generic qword pointer.
-	qword_t *q = packet->data;
+    PACK_GIFTAG(*q, GIF_SET_RGBAQ(r, g, b, 0x80, 0x3f800000),
+                GIF_REG_RGBAQ);
+    (*q)++;
 
-	// This will setup a default drawing environment.
-	q = draw_setup_environment(q,0,frame,z);
+    PACK_GIFTAG(*q, GIF_SET_XYZ(
+        ((int)x1 + 2048) << 4,
+        ((int)y1 + 2048) << 4, 100), GIF_REG_XYZ2);
+    (*q)++;
 
-	// Now reset the primitive origin to 2048-width/2,2048-height/2.
-	q = draw_primitive_xyoffset(q,0,(2048-320),(2048-256));
-
-	// Finish setting up the environment.
-	q = draw_finish(q);
-
-	// Now send the packet, no need to wait since it's the first.
-	dma_channel_send_normal(DMA_CHANNEL_GIF,packet->data,q - packet->data, 0, 0);
-	dma_wait_fast();
-
-	packet_free(packet);
-
+    PACK_GIFTAG(*q, GIF_SET_XYZ(
+        ((int)x2 + 2048) << 4,
+        ((int)y2 + 2048) << 4, 100), GIF_REG_XYZ2);
+    (*q)++;
 }
 
-int render(framebuffer_t *frame, zbuffer_t *z)
+static void render_scene(void)
 {
+    qword_t *q = packet->data;
 
-	int i;
-	int context = 0;
+    q = draw_clear(q, 0, 0, 0,
+                   SCREEN_W, SCREEN_H, 22, 25, 42);
 
-	// Matrices to setup the 3D environment and camera
-	MATRIX local_world;
-	MATRIX world_view;
-	MATRIX view_screen;
-	MATRIX local_screen;
+    /* زمین */
+    rectangle(&q, -320, -256, 320, 256, 65, 75, 72);
 
-	VECTOR *temp_vertices;
+    /* خیابان اصلی */
+    rectangle(&q, -320, -65, 320, 65, 35, 38, 42);
 
-	prim_t prim;
-	color_t color;
+    /* خط وسط خیابان */
+    rectangle(&q, -300, -3, 300, 3, 230, 175, 65);
 
-	xyz_t   *verts;
-	color_t *colors;
+    /* ساختمان‌های سمت چپ */
+    rectangle(&q, -290, -210, -190, -80, 65, 48, 43);
+    rectangle(&q, -170, -220, -85, -80, 90, 58, 43);
+    rectangle(&q, -65, -220, 25, -80, 55, 58, 68);
 
-	// The data packets for double buffering dma sends.
-	packet_t *packets[2];
-	packet_t *current;
-	qword_t *dmatag;
+    /* ساختمان‌های سمت راست */
+    rectangle(&q, 65, 80, 155, 220, 75, 52, 43);
+    rectangle(&q, 180, 80, 280, 220, 55, 60, 70);
+    rectangle(&q, 70, -220, 170, -80, 90, 62, 45);
+    rectangle(&q, 195, -220, 295, -80, 62, 50, 48);
 
-	packets[0] = packet_init(100,PACKET_NORMAL);
-	packets[1] = packet_init(100,PACKET_NORMAL);
+    /* محوطه روشن وسط شهر */
+    rectangle(&q, -45, 95, 45, 210, 105, 72, 48);
 
-	// Allocate calculation space.
-	temp_vertices = memalign(128, sizeof(VECTOR) * vertex_count);
+    q = draw_finish(q);
 
-	// Allocate register space.
-	verts  = memalign(128, sizeof(vertex_t) * vertex_count);
-	colors = memalign(128, sizeof(color_t)  * vertex_count);
+    dma_wait_fast();
+    dma_channel_send_normal(
+        DMA_CHANNEL_GIF, packet->data,
+        q - packet->data, 0, 0);
 
-	// Define the triangle primitive we want to use.
-	prim.type = PRIM_TRIANGLE;
-	prim.shading = PRIM_SHADE_GOURAUD;
-	prim.mapping = DRAW_DISABLE;
-	prim.fogging = DRAW_DISABLE;
-	prim.blending = DRAW_DISABLE;
-	prim.antialiasing = DRAW_ENABLE;
-	prim.mapping_type = PRIM_MAP_ST;
-	prim.colorfix = PRIM_UNFIXED;
-
-	color.r = 0x80;
-	color.g = 0x80;
-	color.b = 0x80;
-	color.a = 0x80;
-	color.q = 1.0f;
-
-	// Create the view_screen matrix.
-	create_view_screen(view_screen, graph_aspect_ratio(), -3.00f, 3.00f, -3.00f, 3.00f, 1.00f, 2000.00f);
-
-	// Wait for any previous dma transfers to finish before starting.
-	dma_wait_fast();
-
-	// The main loop...
-	for (;;)
-	{
-		qword_t *q;
-
-		current = packets[context];
-
-		// Spin the cube a bit.
-		object_rotation[0] += 0.008f; //while (object_rotation[0] > 3.14f) { object_rotation[0] -= 6.28f; }
-		object_rotation[1] += 0.012f; //while (object_rotation[1] > 3.14f) { object_rotation[1] -= 6.28f; }
-
-		// Create the local_world matrix.
-		create_local_world(local_world, object_position, object_rotation);
-
-		// Create the world_view matrix.
-		create_world_view(world_view, camera_position, camera_rotation);
-
-		// Create the local_screen matrix.
-		create_local_screen(local_screen, local_world, world_view, view_screen);
-
-		// Calculate the vertex values.
-		calculate_vertices(temp_vertices, vertex_count, vertices, local_screen);
-
-		// Convert floating point vertices to fixed point and translate to center of screen.
-		draw_convert_xyz(verts, 2048, 2048, 32, vertex_count, (vertex_f_t*)temp_vertices);
-
-		// Convert floating point colours to fixed point.
-		draw_convert_rgbq(colors, vertex_count, (vertex_f_t*)temp_vertices, (color_f_t*)colours, 0x80);
-
-		// Grab our dmatag pointer for the dma chain.
-		dmatag = current->data;
-
-		// Now grab our qword pointer and increment past the dmatag.
-		q = dmatag;
-		q++;
-
-		// Clear framebuffer but don't update zbuffer.
-		q = draw_disable_tests(q,0,z);
-		q = draw_clear(q,0,2048.0f-320.0f,2048.0f-256.0f,frame->width,frame->height,0x00,0x00,0x00);
-		q = draw_enable_tests(q,0,z);
-
-		// Draw the triangles using triangle primitive type.
-		q = draw_prim_start(q,0,&prim, &color);
-
-		for(i = 0; i < points_count; i++)
-		{
-			q->dw[0] = colors[points[i]].rgbaq;
-			q->dw[1] = verts[points[i]].xyz;
-			q++;
-		}
-
-		q = draw_prim_end(q,2,DRAW_RGBAQ_REGLIST);
-
-		// Setup a finish event.
-		q = draw_finish(q);
-
-		// Define our dmatag for the dma chain.
-		DMATAG_END(dmatag,(q-current->data)-1,0,0,0);
-
-		// Now send our current dma chain.
-		dma_wait_fast();
-		dma_channel_send_chain(DMA_CHANNEL_GIF,current->data, q - current->data, 0, 0);
-
-		// Now switch our packets so we can process data while the DMAC is working.
-		context ^= 1;
-
-		// Wait for scene to finish drawing
-		draw_wait_finish();
-
-		graph_wait_vsync();
-
-	}
-
-	packet_free(packets[0]);
-	packet_free(packets[1]);
-
-	return 0;
-
+    draw_wait_finish();
+    graph_wait_vsync();
 }
 
 int main(int argc, char *argv[])
 {
+    dma_channel_initialize(DMA_CHANNEL_GIF, NULL, 0);
+    dma_channel_fast_waits(DMA_CHANNEL_GIF);
 
-	// The buffers to be used.
-	framebuffer_t frame;
-	zbuffer_t z;
+    setup_screen();
 
-	// Init GIF dma channel.
-	dma_channel_initialize(DMA_CHANNEL_GIF,NULL,0);
-	dma_channel_fast_waits(DMA_CHANNEL_GIF);
+    for (;;)
+    {
+        render_scene();
+    }
 
-	// Init the GS, framebuffer, and zbuffer.
-	init_gs(&frame, &z);
-
-	// Init the drawing environment and framebuffer.
-	init_drawing_environment(&frame,&z);
-
-	// Render the cube
-	render(&frame,&z);
-
-	// Sleep
-	SleepThread();
-
-	// End program.
-	return 0;
-
+    return 0;
 }

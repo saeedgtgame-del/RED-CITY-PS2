@@ -1,223 +1,96 @@
 
-#include <tamtypes.h>
 #include <kernel.h>
-#include <sifrpc.h>
-#include <debug.h>
+#include <stdlib.h>
+#include <malloc.h>
+#include <tamtypes.h>
+#include <math3d.h>
+#include <packet.h>
+#include <dma_tags.h>
+#include <gif_tags.h>
+#include <gs_psm.h>
+#include <dma.h>
+#include <graph.h>
+#include <draw.h>
+#include <draw3d.h>
 #include <libpad.h>
 
-static unsigned char padBuf[256] __attribute__((aligned(64)));
+/* RED CITY - 3D city prototype */
 
-static int playerX = 50;
-static int playerY = 50;
+#define SCREEN_W 640
+#define SCREEN_H 512
 
-static int gameStarted = 0;
-static int paused = 0;
-static int inCar = 0;
+static framebuffer_t frame;
+static zbuffer_t z;
 
-static u32 previousButtons = 0;
-static int frameCounter = 0;
+static VECTOR player = {0.0f, 0.0f, 0.0f, 1.0f};
+static VECTOR camera = {0.0f, 0.0f, 100.0f, 1.0f};
+static VECTOR rotation = {0.0f, 0.0f, 0.0f, 1.0f};
 
-static void showTitle(void)
+static void init_video(void)
 {
-    init_scr();
+    frame.width = SCREEN_W;
+    frame.height = SCREEN_H;
+    frame.mask = 0;
+    frame.psm = GS_PSM_32;
+    frame.address = graph_vram_allocate(
+        SCREEN_W, SCREEN_H, GS_PSM_32, GRAPH_ALIGN_PAGE);
 
-    scr_printf("\n");
-    scr_printf("====================================\n");
-    scr_printf("             RED CITY\n");
-    scr_printf("             PS2 V0.2\n");
-    scr_printf("====================================\n");
-    scr_printf("       THE CITY IS YOURS\n");
-    scr_printf("\n");
-    scr_printf("         PRESS CROSS TO START\n");
-    scr_printf("\n");
-    scr_printf("====================================\n");
+    z.enable = DRAW_ENABLE;
+    z.mask = 0;
+    z.method = ZTEST_METHOD_GREATER_EQUAL;
+    z.zsm = GS_ZBUF_32;
+    z.address = graph_vram_allocate(
+        SCREEN_W, SCREEN_H, GS_ZBUF_32, GRAPH_ALIGN_PAGE);
+
+    graph_initialize(frame.address, SCREEN_W, SCREEN_H,
+                     GS_PSM_32, 0, 0);
+
+    packet_t *p = packet_init(16, PACKET_NORMAL);
+    qword_t *q = p->data;
+
+    q = draw_setup_environment(q, 0, &frame, &z);
+    q = draw_primitive_xyoffset(q, 0, 2048-320, 2048-256);
+    q = draw_finish(q);
+
+    dma_channel_send_normal(DMA_CHANNEL_GIF, p->data,
+                            q-p->data, 0, 0);
+    dma_wait_fast();
+    packet_free(p);
 }
 
-static void showStatus(void)
+static void draw_scene(void)
 {
-    scr_printf("\n");
-    scr_printf("------------------------------------\n");
-    scr_printf("             RED CITY\n");
-    scr_printf("------------------------------------\n");
+    packet_t *p = packet_init(100, PACKET_NORMAL);
+    qword_t *q = p->data;
 
-    scr_printf("PLAYER X: %d\n", playerX);
-    scr_printf("PLAYER Y: %d\n", playerY);
+    q = draw_disable_tests(q, 0, &z);
+    q = draw_clear(q, 0, 0, 0, SCREEN_W, SCREEN_H,
+                   70, 100, 140);
+    q = draw_enable_tests(q, 0, &z);
 
-    if (inCar)
-        scr_printf("MODE: VEHICLE\n");
-    else
-        scr_printf("MODE: ON FOOT\n");
+    q = draw_finish(q);
 
-    if (paused)
-        scr_printf("GAME: PAUSED\n");
-    else
-        scr_printf("GAME: RUNNING\n");
+    dma_wait_fast();
+    dma_channel_send_normal(DMA_CHANNEL_GIF, p->data,
+                            q-p->data, 0, 0);
+    draw_wait_finish();
+    graph_wait_vsync();
 
-    scr_printf("------------------------------------\n");
-    scr_printf("D-PAD: MOVE\n");
-    scr_printf("CROSS: INTERACT / START\n");
-    scr_printf("CIRCLE: ENTER / EXIT VEHICLE\n");
-    scr_printf("SQUARE: CITY INTERACTION\n");
-    scr_printf("TRIANGLE: CITY MAP INFO\n");
-    scr_printf("START: PAUSE / RESUME\n");
-    scr_printf("------------------------------------\n");
+    packet_free(p);
 }
 
-static void updateGame(u32 buttons)
+int main(void)
 {
-    int speed = inCar ? 3 : 1;
+    dma_channel_initialize(DMA_CHANNEL_GIF, NULL, 0);
+    dma_channel_fast_waits(DMA_CHANNEL_GIF);
 
-    if (paused)
-        return;
+    init_video();
 
-    if (buttons & PAD_UP)
-        playerY -= speed;
-
-    if (buttons & PAD_DOWN)
-        playerY += speed;
-
-    if (buttons & PAD_LEFT)
-        playerX -= speed;
-
-    if (buttons & PAD_RIGHT)
-        playerX += speed;
-
-    if (playerX < 0)
-        playerX = 0;
-
-    if (playerX > 100)
-        playerX = 100;
-
-    if (playerY < 0)
-        playerY = 0;
-
-    if (playerY > 100)
-        playerY = 100;
-
-    frameCounter++;
-
-    if (frameCounter >= 100)
+    while (1)
     {
-        frameCounter = 0;
-
-        scr_printf(
-            "POSITION: X=%d Y=%d\n",
-            playerX,
-            playerY
-        );
-    }
-}
-
-int main(int argc, char *argv[])
-{
-    struct padButtonStatus buttons;
-    u32 pressed;
-    u32 justPressed;
-    int state;
-    int opened;
-
-    (void)argc;
-    (void)argv;
-
-    SifInitRpc(0);
-
-    padInit(0);
-
-    showTitle();
-
-    scr_printf("Connecting controller...\n");
-
-    opened = padPortOpen(0, 0, padBuf);
-
-    if (!opened)
-    {
-        scr_printf("ERROR: CONTROLLER NOT FOUND\n");
-
-        for (;;)
-            SleepThread();
+        draw_scene();
     }
 
-    scr_printf("CONTROLLER CONNECTED!\n");
-
-    for (;;)
-    {
-        state = padGetState(0, 0);
-
-        if (state == PAD_STATE_STABLE ||
-            state == PAD_STATE_FINDCTP1)
-        {
-            if (padRead(0, 0, &buttons) != 0)
-            {
-                pressed = 0xFFFF ^ buttons.btns;
-
-                justPressed = pressed & ~previousButtons;
-
-                if (!gameStarted)
-                {
-                    if (justPressed & PAD_CROSS)
-                    {
-                        gameStarted = 1;
-
-                        scr_printf("\n");
-                        scr_printf("WELCOME TO RED CITY!\n");
-                        scr_printf("GAME STARTED!\n");
-
-                        showStatus();
-                    }
-                }
-                else
-                {
-                    if (justPressed & PAD_START)
-                    {
-                        paused = !paused;
-
-                        if (paused)
-                            scr_printf("GAME PAUSED\n");
-                        else
-                            scr_printf("GAME RESUMED\n");
-                    }
-
-                    if (!paused)
-                    {
-                        if (justPressed & PAD_CIRCLE)
-                        {
-                            inCar = !inCar;
-
-                            if (inCar)
-                                scr_printf("VEHICLE MODE ON\n");
-                            else
-                                scr_printf("ON FOOT MODE\n");
-                        }
-
-                        if (justPressed & PAD_SQUARE)
-                        {
-                            scr_printf("CITY INTERACTION!\n");
-                        }
-
-                        if (justPressed & PAD_TRIANGLE)
-                        {
-                            scr_printf("\n");
-                            scr_printf("====== CITY MAP INFO ======\n");
-                            scr_printf("PLAYER X: %d\n", playerX);
-                            scr_printf("PLAYER Y: %d\n", playerY);
-                            scr_printf("CITY CENTER: X=50 Y=50\n");
-                            scr_printf("===========================\n");
-                        }
-
-                        updateGame(pressed);
-                    }
-                }
-
-                previousButtons = pressed;
-            }
-        }
-        else if (state == PAD_STATE_DISCONN)
-        {
-            scr_printf("CONTROLLER DISCONNECTED!\n");
-        }
-
-        nopdelay();
-    }
-
+    SleepThread();
     return 0;
 }

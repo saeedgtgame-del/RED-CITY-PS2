@@ -33,7 +33,7 @@ static NX_Time nxClock;
 static int nxPlayer=-1;
 static int nxTraffic[4];
 static int nxPedestrians[4];
-static const float missionTargets[10]={-18.0f,-33.0f,-48.0f,-63.0f,-78.0f,-93.0f,-108.0f,-123.0f,-138.0f,-153.0f};
+static const float missionTargets[10]={-24.0f,-60.0f,-96.0f,-132.0f,-168.0f,-204.0f,-240.0f,-276.0f,-312.0f,-348.0f};
 static float px=0.0f, pz=0.0f, heading=0.0f;
 static float cameraYaw=0.0f, cameraPitch=0.34f, cameraDistance=42.0f;
 static VECTOR cameraPos={0.0f,28.0f,100.0f,1.0f};
@@ -214,7 +214,7 @@ static void updatePad(void) {
   }
   if(player->transform.position.x < -28.0f) player->transform.position.x=-28.0f;
   if(player->transform.position.x > 28.0f) player->transform.position.x=28.0f;
-  if(player->transform.position.z < -180.0f) player->transform.position.z=-180.0f;
+  if(player->transform.position.z < -420.0f) player->transform.position.z=-420.0f;
   if(player->transform.position.z > 20.0f) player->transform.position.z=20.0f;
   px=player->transform.position.x;
   pz=player->transform.position.z;
@@ -275,24 +275,24 @@ static void render(void) {
  q=draw_clear(q,0,2048-SW/2,2048-SH/2,SW,SH,90,135,165);
  q=draw_enable_tests(q,0,&zbuf);
  /* road slab and city blocks form a small 3D street */
- { VECTOR p={0,-13,-75,1},r={0,0,0,1};
-   q=drawCube(q,viewScreen,p,r,35,1,125,42,47,55,tmp,xyz,rgbaq,&prim,&base);
-   p[0]=-40; p[1]=-11; q=drawCube(q,viewScreen,p,r,5,1,130,105,105,110,tmp,xyz,rgbaq,&prim,&base);
-   p[0]=40; q=drawCube(q,viewScreen,p,r,5,1,130,105,105,110,tmp,xyz,rgbaq,&prim,&base);
+ { VECTOR p={0,-13,-205,1},r={0,0,0,1};
+   q=drawCube(q,viewScreen,p,r,35,1,215,42,47,55,tmp,xyz,rgbaq,&prim,&base);
+   p[0]=-40; p[1]=-11; q=drawCube(q,viewScreen,p,r,5,1,220,105,105,110,tmp,xyz,rgbaq,&prim,&base);
+   p[0]=40; q=drawCube(q,viewScreen,p,r,5,1,220,105,105,110,tmp,xyz,rgbaq,&prim,&base);
  }
  /* raised sidewalks and curbs make the road read as a real street */
- { VECTOR p={-39.0f,-11.6f,-75.0f,1},r={0,0,0,1};
-   q=drawCube(q,viewScreen,p,r,4.0f,0.7f,130.0f,125,125,118,tmp,xyz,rgbaq,&prim,&base);
-   p[0]=39.0f; q=drawCube(q,viewScreen,p,r,4.0f,0.7f,130.0f,125,125,118,tmp,xyz,rgbaq,&prim,&base);
+ { VECTOR p={-39.0f,-11.6f,-205.0f,1},r={0,0,0,1};
+   q=drawCube(q,viewScreen,p,r,4.0f,0.7f,220.0f,125,125,118,tmp,xyz,rgbaq,&prim,&base);
+   p[0]=39.0f; q=drawCube(q,viewScreen,p,r,4.0f,0.7f,220.0f,125,125,118,tmp,xyz,rgbaq,&prim,&base);
  }
  /* broken white centre line and road-edge paint */
- for(i=0;i<12;i++) {
+ for(i=0;i<23;i++) {
    VECTOR p={0,-11.5f,-8.0f-i*19.0f,1},r={0,0,0,1};
    q=drawCube(q,viewScreen,p,r,0.45f,0.18f,6.0f,235,225,190,tmp,xyz,rgbaq,&prim,&base);
    p[0]=-33.0f; q=drawCube(q,viewScreen,p,r,0.35f,0.18f,7.0f,230,190,45,tmp,xyz,rgbaq,&prim,&base);
    p[0]=33.0f; q=drawCube(q,viewScreen,p,r,0.35f,0.18f,7.0f,230,190,45,tmp,xyz,rgbaq,&prim,&base);
  }
- for(i=0;i<6;i++) {
+ for(i=0;i<10;i++) {
   VECTOR p1={-48,0,-25.0f-i*42.0f,1},p2={48,0,-25.0f-i*42.0f,1},r={0,0,0,1};
   q=drawCube(q,viewScreen,p1,r,12,18+(i%3)*4,12,120,78,62,tmp,xyz,rgbaq,&prim,&base);
   q=drawCube(q,viewScreen,p2,r,12,22+(i%2)*5,12,75,91,112,tmp,xyz,rgbaq,&prim,&base);
@@ -305,12 +305,12 @@ static void render(void) {
   p2[2]-=11.0f; q=drawCube(q,viewScreen,p2,r,0.35f,3.5f,3.5f,120,190,225,tmp,xyz,rgbaq,&prim,&base);
  }
  /* shopfront doors and simple street trees add scale and depth */
- for(i=0;i<6;i++) {
+ for(i=0;i<10;i++) {
   VECTOR d={-35.2f,-6.0f,-25.0f-i*42.0f,1},r={0,0,0,1};
   q=drawCube(q,viewScreen,d,r,0.4f,4.0f,2.5f,65,43,32,tmp,xyz,rgbaq,&prim,&base);
   d[0]=35.2f; q=drawCube(q,viewScreen,d,r,0.4f,4.0f,2.5f,55,58,65,tmp,xyz,rgbaq,&prim,&base);
  }
- for(i=0;i<4;i++) {
+ for(i=0;i<9;i++) {
   VECTOR t={-40.0f,-6.5f,-38.0f-i*48.0f,1},r={0,0,0,1};
   q=drawCube(q,viewScreen,t,r,1.0f,5.5f,1.0f,95,65,42,tmp,xyz,rgbaq,&prim,&base);
   t[1]=1.0f; q=drawCube(q,viewScreen,t,r,4.0f,4.0f,4.0f,42,105,62,tmp,xyz,rgbaq,&prim,&base);
@@ -318,7 +318,7 @@ static void render(void) {
   t[1]=1.0f; q=drawCube(q,viewScreen,t,r,4.0f,4.0f,4.0f,42,105,62,tmp,xyz,rgbaq,&prim,&base);
  }
  /* street lamps: poles and warm lamp heads */
- for(i=0;i<5;i++) {
+ for(i=0;i<10;i++) {
   VECTOR lp={-31.0f,-1.0f,-18.0f-i*48.0f,1},lr={0,0,0,1};
   q=drawCube(q,viewScreen,lp,lr,0.65f,10.0f,0.65f,35,38,43,tmp,xyz,rgbaq,&prim,&base);
   lp[0]=31.0f; q=drawCube(q,viewScreen,lp,lr,0.65f,10.0f,0.65f,35,38,43,tmp,xyz,rgbaq,&prim,&base);
@@ -356,7 +356,7 @@ static void render(void) {
    q=drawCube(q,viewScreen,np,vr,1.2f,1.2f,1.2f,205,165,130,tmp,xyz,rgbaq,&prim,&base);
    np[0]-=2.1f; np[1]=-1.8f; q=drawCube(q,viewScreen,np,vr,0.65f,3.0f,0.7f,45,65,115,tmp,xyz,rgbaq,&prim,&base);
    np[0]+=4.2f; q=drawCube(q,viewScreen,np,vr,0.65f,3.0f,0.7f,45,65,115,tmp,xyz,rgbaq,&prim,&base);
-   np[0]-=2.1f; np[1]=-5.0f; np[2]-=0.4f;
+   np[0]-=2.1f; np[1]=-9.5f; np[2]-=0.4f;
    q=drawCube(q,viewScreen,np,vr,0.7f,2.5f,0.8f,35,40,55,tmp,xyz,rgbaq,&prim,&base);
    np[0]+=1.5f; q=drawCube(q,viewScreen,np,vr,0.7f,2.5f,0.8f,35,40,55,tmp,xyz,rgbaq,&prim,&base);
    np[0]=n->transform.position.x; np[1]=3.9f; np[2]=n->transform.position.z;
@@ -398,7 +398,7 @@ static void render(void) {
  q=rect(q,18,SH-121,100,3,95,110,100);
  q=rect(q,18,SH-76,100,3,95,110,100);
  q=rect(q,86,SH-145,3,100,95,110,100);
- { int mx=68+(int)(px*0.22f); int my=SH-140+(int)(-pz*0.16f);
+ { int mx=68+(int)(px*1.5f); int my=SH-140+(int)(-pz*0.24f);
    if(mx<21)mx=21; if(mx>111)mx=111;
    if(my<SH-140)my=SH-140; if(my>SH-51)my=SH-51;
    q=rect(q,mx-3,my-3,7,7,255,55,55);

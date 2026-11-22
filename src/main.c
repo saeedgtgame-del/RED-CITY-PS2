@@ -153,15 +153,19 @@ static void initNexonGame(void) {
  nx_init(&nxScene);
  nxPlayer=nx_spawn(&nxScene,NX_ENTITY_PLAYER,(NX_Vec3){-29.0f,-0.35f,0.0f});
  nx_set_player(&nxScene,nxPlayer);
+ nxScene.entities[nxPlayer].radius=1.8f;
  playerVehicle=nx_spawn(&nxScene,NX_ENTITY_VEHICLE,(NX_Vec3){-19.0f,-5.0f,-5.0f});
+ nxScene.entities[playerVehicle].radius=4.2f;
  nx_camera_init(&nxCamera,32.0f,12.0f);
  nxCamera.position.x=0.0f; nxCamera.position.y=14.0f; nxCamera.position.z=42.0f;
  for(i=0;i<4;i++) {
   p.x=(i&1)?11.0f:-11.0f; p.y=-5.0f; p.z=-55.0f-(float)i*38.0f;
   nxTraffic[i]=nx_spawn(&nxScene,NX_ENTITY_VEHICLE,p);
+  nxScene.entities[nxTraffic[i]].radius=3.5f;
   nxScene.entities[nxTraffic[i]].velocity.z=13.0f+(float)(i%2)*3.0f;
   p.x=(i&1)?-38.0f:38.0f; p.y=0.0f; p.z=-20.0f-(float)i*42.0f;
   nxPedestrians[i]=nx_spawn(&nxScene,NX_ENTITY_NPC,p);
+  nxScene.entities[nxPedestrians[i]].radius=1.25f;
   nxScene.entities[nxPedestrians[i]].velocity.x=(i&1)?-1.5f:1.5f;
  }
  memset(&nxClock,0,sizeof(nxClock));
@@ -189,6 +193,42 @@ static void updateWorld(void) {
   mission++;
  }
 }
+/* Planar contact response keeps the player from walking through traffic or pedestrians. */
+static void resolvePlayerContacts(NX_Entity *player) {
+ int i;
+ if(!player || !player->active) return;
+ for(i=0;i<4;i++) {
+  NX_Entity *other=&nxScene.entities[nxTraffic[i]];
+  float dx=player->transform.position.x-other->transform.position.x;
+  float dz=player->transform.position.z-other->transform.position.z;
+  float minDist=player->radius+other->radius;
+  float d2=dx*dx+dz*dz;
+  if(d2<minDist*minDist && d2>0.0001f) {
+   float d=sqrtf(d2), push=(minDist-d);
+   dx/=d; dz/=d;
+   player->transform.position.x+=dx*push;
+   player->transform.position.z+=dz*push;
+   player->velocity.x*=0.45f; player->velocity.z*=0.45f;
+  }
+ }
+ for(i=0;i<4;i++) {
+  NX_Entity *other=&nxScene.entities[nxPedestrians[i]];
+  float dx=player->transform.position.x-other->transform.position.x;
+  float dz=player->transform.position.z-other->transform.position.z;
+  float minDist=player->radius+other->radius;
+  float d2=dx*dx+dz*dz;
+  if(d2<minDist*minDist && d2>0.0001f) {
+   float d=sqrtf(d2), push=(minDist-d);
+   dx/=d; dz/=d;
+   player->transform.position.x+=dx*push;
+   player->transform.position.z+=dz*push;
+   player->velocity.x*=0.65f; player->velocity.z*=0.65f;
+  }
+ }
+ if(player->transform.position.x < -52.0f) player->transform.position.x=-52.0f;
+ if(player->transform.position.x > 52.0f) player->transform.position.x=52.0f;
+}
+
 static void updatePad(void) {
  int s;
  if(!padInitialized || !padOpened) { initPad(); return; }
@@ -290,6 +330,7 @@ static void updatePad(void) {
     if(!(pad.btns & PAD_CIRCLE)) { player->transform.position.x=-29.0f; player->transform.position.z=0.0f; player->transform.rotation.y=0.0f; cameraYaw=0.0f; cameraPitch=0.30f; mission=0; }
     if(player->transform.position.x < -52.0f) player->transform.position.x=-52.0f;
     if(player->transform.position.x > 52.0f) player->transform.position.x=52.0f;
+    resolvePlayerContacts(player);
     if(player->transform.position.z < -900.0f) player->transform.position.z=-900.0f;
     if(player->transform.position.z > 20.0f) player->transform.position.z=20.0f;
     px=player->transform.position.x; pz=player->transform.position.z; heading=player->transform.rotation.y;

@@ -1,5 +1,6 @@
 #include "nexon_engine.h"
 #include <string.h>
+#include <math.h>
 
 static float nx_clamp_dt(float dt) {
     if (dt < 0.0f) return 0.0f;
@@ -54,16 +55,21 @@ void nx_update_player(NX_Scene *scene, const NX_Input *in, float dt) {
     if (!in || scene->player<0 || scene->player>=NX_MAX_ENTITIES) return;
     p=&scene->entities[scene->player];
     if (!p->active) return;
-    speed=8.0f;
+    speed=(in->held & 1u) ? 12.0f : 8.0f;
     dx=in->moveX; dz=in->moveZ;
     len=dx*dx+dz*dz;
-    if (len>1.0f) { /* avoid faster diagonal movement */
-        /* Approximate normalization without expensive square root. */
-        dx*=0.70710678f; dz*=0.70710678f;
+    if (len>1.0f) {
+        float inv=1.0f/sqrtf(len);
+        dx*=inv; dz*=inv;
     }
     p->transform.rotation.y += in->turn*2.2f*dt;
-    p->velocity.x=dx*speed;
-    p->velocity.z=dz*speed;
+    /* Movement follows the character's facing direction. */
+    {
+        float sn=sinf(p->transform.rotation.y), cs=cosf(p->transform.rotation.y);
+        float forward=-dz, right=dx;
+        p->velocity.x=(right*cs+forward*sn)*speed;
+        p->velocity.z=(right*sn-forward*cs)*speed;
+    }
     p->transform.position.x += p->velocity.x*dt;
     p->transform.position.z += p->velocity.z*dt;
 }

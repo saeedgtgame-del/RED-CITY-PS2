@@ -630,6 +630,11 @@ static void render(void) {
     q=drawCube(q,viewScreen,d,cr,2.8f,0.7f,0.25f,55,85,105,tmp,xyz,rgbaq,&prim,&base);
     d[1]=-10.5f; d[2]=car->transform.position.z-8.0f;
     q=drawCube(q,viewScreen,d,cr,4.2f,0.45f,0.35f,40,42,48,tmp,xyz,rgbaq,&prim,&base);
+    /* Twin headlamps respond to the day-night cycle. */
+    d[1]=-9.55f; d[2]=car->transform.position.z-8.18f; d[0]=car->transform.position.x-2.75f;
+    q=drawCube(q,viewScreen,d,cr,0.75f,0.38f,0.22f,255,(int)(190+65*(1.0f-daylight)),(int)(105+130*(1.0f-daylight)),tmp,xyz,rgbaq,&prim,&base);
+    d[0]=car->transform.position.x+2.75f;
+    q=drawCube(q,viewScreen,d,cr,0.75f,0.38f,0.22f,255,(int)(190+65*(1.0f-daylight)),(int)(105+130*(1.0f-daylight)),tmp,xyz,rgbaq,&prim,&base);
   }
   { int wx,wz; for(wx=-1;wx<=1;wx+=2) for(wz=-1;wz<=1;wz+=2) { VECTOR wh={car->transform.position.x+wx*4.1f,-11.35f,car->transform.position.z+wz*5.2f,1}; q=drawCube(q,viewScreen,wh,cr,0.8f,1.8f,1.2f,18,20,24,tmp,xyz,rgbaq,&prim,&base); } }
  } else {
@@ -695,7 +700,7 @@ static void render(void) {
  q=drawText(q,145,19,1,padConnected?"PAD OK":"NO PAD",padConnected?90:245,padConnected?225:85,padConnected?130:85);
  { const char *w=weatherType==0?"CLEAR":weatherType==1?"CLOUDY":weatherType==2?"POLLUTED":weatherType==3?"RAIN":"SNOW"; q=drawText(q,SW-105,19,1,w,210,210,190); }
  q=rect(q,SW/2-118,12,236,34,10,15,24);
- if(mission<10) q=drawText(q,SW/2-108,19,1,"MISSION - REACH MARKER",245,210,105);
+ if(mission<10) { char ms[24]="MISSION 01/10 - MARKER"; ms[8]=(char)('0'+(mission+1)/10); ms[9]=(char)('0'+(mission+1)%10); q=drawText(q,SW/2-108,19,1,ms,245,210,105); }
  else q=drawText(q,SW/2-65,19,1,"MISSION COMPLETE",100,235,140);
  /* Street-style minimap. */
  q=rect(q,12,SH-151,112,112,8,12,18);

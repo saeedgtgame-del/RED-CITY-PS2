@@ -38,7 +38,7 @@ static int nxTraffic[4];
 static int nxPedestrians[4];
 static const float missionTargets[10]={-24.0f,-60.0f,-96.0f,-132.0f,-168.0f,-204.0f,-240.0f,-276.0f,-312.0f,-348.0f};
 static float px=0.0f, pz=0.0f, heading=0.0f;
-static float cameraYaw=0.0f, cameraPitch=0.34f, cameraDistance=42.0f;
+static float cameraYaw=0.0f, cameraPitch=0.30f, cameraDistance=32.0f;
 static VECTOR cameraPos={0.0f,28.0f,100.0f,1.0f};
 static VECTOR cameraRot={0.0f,0.0f,0.0f,1.0f};
 static VECTOR objPos={0.0f,0.0f,0.0f,1.0f};
@@ -151,7 +151,7 @@ static void initNexonGame(void) {
  nxPlayer=nx_spawn(&nxScene,NX_ENTITY_PLAYER,(NX_Vec3){-29.0f,0.0f,0.0f});
  nx_set_player(&nxScene,nxPlayer);
  playerVehicle=nx_spawn(&nxScene,NX_ENTITY_VEHICLE,(NX_Vec3){-19.0f,-5.0f,-5.0f});
- nx_camera_init(&nxCamera,42.0f,14.0f);
+ nx_camera_init(&nxCamera,32.0f,12.0f);
  nxCamera.position.x=0.0f; nxCamera.position.y=14.0f; nxCamera.position.z=42.0f;
  for(i=0;i<4;i++) {
   p.x=(i&1)?11.0f:-11.0f; p.y=-5.0f; p.z=-55.0f-(float)i*38.0f;
@@ -245,8 +245,31 @@ static void updatePad(void) {
     if(car->transform.position.z > 20.0f) car->transform.position.z=20.0f;
     px=car->transform.position.x; pz=car->transform.position.z; heading=carHeading;
   } else {
+    /* Camera-relative third-person movement.
+       The camera yaw defines forward/right; the avatar smoothly turns toward
+       the actual world-space travel direction before moving. */
+    {
+      float forward=-in.moveZ, right=in.moveX;
+      float mag=sqrtf(right*right+forward*forward);
+      if(mag>1.0f) mag=1.0f;
+      if(mag>0.12f) {
+        float cs=cosf(cameraYaw), sn=sinf(cameraYaw);
+        float worldX=right*cs-forward*sn;
+        float worldZ=right*sn-forward*cs;
+        float desired=atan2f(worldX,-worldZ);
+        float diff=desired-player->transform.rotation.y;
+        while(diff>3.14159265f) diff-=6.28318530f;
+        while(diff< -3.14159265f) diff+=6.28318530f;
+        player->transform.rotation.y+=diff*0.24f;
+        in.moveX=0.0f;
+        in.moveZ=-mag;
+      } else {
+        in.moveX=0.0f;
+        in.moveZ=0.0f;
+      }
+    }
     nx_update_player(&nxScene,&in,1.0f/60.0f);
-    if(!(pad.btns & PAD_CIRCLE)) { player->transform.position.x=-29.0f; player->transform.position.z=0.0f; player->transform.rotation.y=0.0f; cameraYaw=0.0f; cameraPitch=0.34f; mission=0; }
+    if(!(pad.btns & PAD_CIRCLE)) { player->transform.position.x=-29.0f; player->transform.position.z=0.0f; player->transform.rotation.y=0.0f; cameraYaw=0.0f; cameraPitch=0.30f; mission=0; }
     if(player->transform.position.x < -32.0f) player->transform.position.x=-32.0f;
     if(player->transform.position.x > 32.0f) player->transform.position.x=32.0f;
     if(player->transform.position.z < -420.0f) player->transform.position.z=-420.0f;
@@ -302,7 +325,7 @@ static void render(void) {
  /* Keep the camera behind the player while allowing right-stick orbit. */
  { float cy=cameraYaw+(inCar?carHeading:0.0f);
   float tx=px+sinf(cy)*cameraDistance, ty=cameraPitch*cameraDistance+5.0f, tz=pz+cosf(cy)*cameraDistance;
-  cameraPos[0]+=(tx-cameraPos[0])*0.16f; cameraPos[1]+=(ty-cameraPos[1])*0.16f; cameraPos[2]+=(tz-cameraPos[2])*0.16f;
+  cameraPos[0]+=(tx-cameraPos[0])*0.16f; cameraPos[1]+=(ty-cameraPos[1])*0.20f; cameraPos[2]+=(tz-cameraPos[2])*0.20f;
   cameraRot[0]=cameraPitch; cameraRot[1]=cy; cameraRot[2]=0.0f; }
  tag=packets[ctx]->data; q=tag+1;
  q=draw_disable_tests(q,0,&zbuf);
@@ -423,8 +446,21 @@ static void render(void) {
   p[1]=6.0f; q=drawCube(q,viewScreen,p,r,2.6f,2.6f,2.6f,220,175,140,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px-4.0f; p[1]=-1.5f; p[2]=pz; q=drawCube(q,viewScreen,p,r,1.0f,4.5f,1.0f,190,35,42,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px+4.0f; q=drawCube(q,viewScreen,p,r,1.0f,4.5f,1.0f,190,35,42,tmp,xyz,rgbaq,&prim,&base);
-  p[0]=px-1.5f; p[1]=-9.0f; q=drawCube(q,viewScreen,p,r,1.1f,3.0f,1.2f,28,32,42,tmp,xyz,rgbaq,&prim,&base);
-  p[0]=px+1.5f; p[1]=-9.0f; q=drawCube(q,viewScreen,p,r,1.1f,3.0f,1.2f,28,32,42,tmp,xyz,rgbaq,&prim,&base);
+  /* Extra layered jacket, shoulders, forearms, trousers and shoes. */
+  p[0]=px; p[1]=1.2f; p[2]=pz-0.15f;
+  q=drawCube(q,viewScreen,p,r,3.35f,3.6f,2.55f,125,24,34,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px-4.0f; p[1]=-4.3f; p[2]=pz-0.15f;
+  q=drawCube(q,viewScreen,p,r,0.85f,2.0f,0.9f,205,145,115,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px+4.0f;
+  q=drawCube(q,viewScreen,p,r,0.85f,2.0f,0.9f,205,145,115,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px-1.5f; p[1]=-9.0f; p[2]=pz;
+  q=drawCube(q,viewScreen,p,r,1.1f,3.0f,1.2f,28,32,42,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px+1.5f;
+  q=drawCube(q,viewScreen,p,r,1.1f,3.0f,1.2f,28,32,42,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px-1.5f; p[1]=-11.2f; p[2]=pz-0.35f;
+  q=drawCube(q,viewScreen,p,r,1.25f,0.75f,1.8f,18,20,25,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px+1.5f;
+  q=drawCube(q,viewScreen,p,r,1.25f,0.75f,1.8f,18,20,25,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px; p[1]=8.0f; p[2]=pz; q=drawCube(q,viewScreen,p,r,2.65f,0.55f,2.65f,35,27,23,tmp,xyz,rgbaq,&prim,&base);
   p[1]=6.0f; p[2]=pz-2.35f; p[0]=px-0.72f;
   q=drawCube(q,viewScreen,p,r,0.22f,0.24f,0.16f,18,18,18,tmp,xyz,rgbaq,&prim,&base);

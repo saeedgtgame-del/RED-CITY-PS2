@@ -35,6 +35,7 @@ static int nxTraffic[4];
 static int nxPedestrians[4];
 static const float missionTargets[10]={-18.0f,-33.0f,-48.0f,-63.0f,-78.0f,-93.0f,-108.0f,-123.0f,-138.0f,-153.0f};
 static float px=0.0f, pz=0.0f, heading=0.0f;
+static float cameraYaw=0.0f, cameraPitch=0.25f, cameraDistance=92.0f;
 static VECTOR cameraPos={0.0f,28.0f,100.0f,1.0f};
 static VECTOR cameraRot={0.0f,0.0f,0.0f,1.0f};
 static VECTOR objPos={0.0f,0.0f,0.0f,1.0f};
@@ -59,23 +60,57 @@ static qword_t *rect(qword_t *q,int x,int y,int w,int h,int r,int g,int b) {
  a.color.r=r; a.color.g=g; a.color.b=b; a.color.a=128; a.color.q=1.0f;
  return draw_rect_filled(q,0,&a);
 }
+
+/* Compact 5x7 bitmap font: digits, A-Z, dash, slash and space. */
+static const unsigned char font5x7[39][7]={
+ {14,17,19,21,25,17,14},{4,12,4,4,4,4,14},{14,17,1,2,4,8,31},
+ {30,1,1,14,1,1,30},{2,6,10,18,31,2,2},{31,16,16,30,1,1,30},
+ {6,8,16,30,17,17,14},{31,1,2,4,8,8,8},{14,17,17,14,17,17,14},
+ {14,17,17,15,1,2,12},
+ {14,17,17,31,17,17,17},{30,17,17,30,17,17,30},{14,17,16,16,16,17,14},
+ {30,17,17,17,17,17,30},{31,16,16,30,16,16,31},{31,16,16,30,16,16,16},
+ {14,17,16,23,17,17,15},{17,17,17,31,17,17,17},{14,4,4,4,4,4,14},
+ {7,2,2,2,18,18,12},{17,18,20,24,20,18,17},{16,16,16,16,16,16,31},
+ {17,27,21,21,17,17,17},{17,25,21,19,17,17,17},{14,17,17,17,17,17,14},
+ {30,17,17,30,16,16,16},{14,17,17,17,21,18,13},{30,17,17,30,20,18,17},
+ {15,16,16,14,1,1,30},{31,4,4,4,4,4,4},{17,17,17,17,17,17,14},
+ {17,17,17,17,17,10,4},{17,17,17,21,21,21,10},{17,17,10,4,10,17,17},
+ {17,17,10,4,4,4,4},{31,1,2,4,8,16,31},
+ {0,0,0,31,0,0,0},{1,2,2,4,8,8,16},{0,0,0,0,0,0,0}
+};
+static int glyphIndex(char ch){
+ if(ch>='0'&&ch<='9') return ch-'0';
+ if(ch>='A'&&ch<='Z') return 10+ch-'A';
+ if(ch=='-') return 36;
+ if(ch=='/') return 37;
+ return 38;
+}
+static qword_t *drawText(qword_t *q,int x,int y,int scale,const char *s,int r,int g,int b){
+ int i,row,col;
+ for(i=0;s[i];i++){
+  int gi=glyphIndex(s[i]);
+  for(row=0;row<7;row++) for(col=0;col<5;col++)
+   if(font5x7[gi][row]&(1<<(4-col)))
+    q=rect(q,x+i*6*scale+col*scale,y+row*scale,scale,scale,r,g,b);
+ }
+ return q;
+}
+
 static void showLogo(void) {
  packet_t *p=packet_init(2048,PACKET_NORMAL); qword_t *q=p->data;
  q=draw_disable_tests(q,0,&zbuf);
- q=draw_clear(q,0,2048-SW/2,2048-SH/2,SW,SH,3,4,9);
- q=rect(q,247,105,18,112,230,24,38); q=rect(q,265,190,108,18,230,24,38);
- q=rect(q,355,105,18,112,230,24,38);
- q=rect(q,265,105,18,86,245,245,245); q=rect(q,283,126,18,22,245,245,245);
- q=rect(q,301,148,18,22,245,245,245); q=rect(q,319,170,18,22,245,245,245);
- q=rect(q,337,192,18,18,245,245,245);
- /* Stylized NEXON / GAMES wordmark blocks */
- q=rect(q,172,260,18,48,245,245,245); q=rect(q,190,290,18,18,245,245,245);
- q=rect(q,208,260,18,48,245,245,245); q=rect(q,244,260,18,48,245,245,245);
- q=rect(q,262,260,18,18,245,245,245); q=rect(q,280,260,18,48,245,245,245);
- q=rect(q,298,260,18,48,245,245,245); q=rect(q,316,260,18,18,245,245,245);
- q=rect(q,334,260,18,48,245,245,245); q=rect(q,352,260,18,48,245,245,245);
- q=rect(q,150,370,340,4,230,24,38);
- q=draw_finish(q); dma_wait_fast();
+ q=draw_clear(q,0,2048-SW/2,2048-SH/2,SW,SH,5,7,13);
+ /* Centered studio mark and readable RED CITY title. */
+ q=rect(q,198,145,244,3,115,20,30);
+ q=rect(q,198,274,244,3,115,20,30);
+ q=rect(q,205,151,5,120,225,28,43);
+ q=rect(q,430,151,5,120,225,28,43);
+ q=drawText(q,213,185,5,"RED",235,45,55);
+ q=drawText(q,315,185,5,"CITY",245,245,245);
+ q=drawText(q,253,245,2,"NEXON GAMES",175,185,205);
+ q=drawText(q,250,310,2,"PRESS START",220,220,225);
+ q=draw_finish(q);
+ dma_wait_fast();
  dma_channel_send_normal(DMA_CHANNEL_GIF,p->data,q-p->data,0,0);
  draw_wait_finish(); graph_wait_vsync(); packet_free(p);
 }
@@ -131,28 +166,42 @@ static void updatePad(void) {
  if(!padReady) {
   s=padGetState(0,0);
   if(s==PAD_STATE_STABLE) { padReady=1; padConnected=1; }
-  return;
+  else { padConnected=0; return; }
  }
  s=padGetState(0,0);
  if(s!=PAD_STATE_STABLE) { padReady=0; padConnected=0; return; }
  if(!padRead(0,0,&pad)) return;
- /* libpad bits are active-low. Movement now runs through NEXON ENGINE. */
  {
   NX_Input in;
   NX_Entity *player=&nxScene.entities[nxPlayer];
+  float ax=((float)pad.ljoy_h-128.0f)/127.0f;
+  float ay=((float)pad.ljoy_v-128.0f)/127.0f;
+  float rx=((float)pad.rjoy_h-128.0f)/127.0f;
+  float ry=((float)pad.rjoy_v-128.0f)/127.0f;
   in.moveX=0.0f; in.moveZ=0.0f; in.turn=0.0f; in.pressed=0; in.held=0;
+  /* Left stick movement with a dead zone; D-pad remains a reliable fallback. */
+  if(ax>0.14f || ax< -0.14f) in.moveX=ax;
+  if(ay>0.14f || ay< -0.14f) in.moveZ=ay;
   if(!(pad.btns & PAD_LEFT))  in.moveX=-1.0f;
   if(!(pad.btns & PAD_RIGHT)) in.moveX=1.0f;
   if(!(pad.btns & PAD_UP))    in.moveZ=-1.0f;
   if(!(pad.btns & PAD_DOWN))  in.moveZ=1.0f;
-  if(!(pad.btns & PAD_L1)) in.turn=-1.0f;
-  if(!(pad.btns & PAD_R1)) in.turn=1.0f;
+  /* Right stick and shoulder buttons orbit the third-person camera. */
+  if(rx>0.14f || rx< -0.14f) cameraYaw+=rx*0.045f;
+  if(ry>0.14f || ry< -0.14f) {
+   cameraPitch+=ry*0.012f;
+   if(cameraPitch<0.12f) cameraPitch=0.12f;
+   if(cameraPitch>0.42f) cameraPitch=0.42f;
+  }
+  if(!(pad.btns & PAD_L1)) cameraYaw-=0.035f;
+  if(!(pad.btns & PAD_R1)) cameraYaw+=0.035f;
+  if(!(pad.btns & PAD_CROSS)) in.held=1; /* Cross = sprint */
   nx_update_player(&nxScene,&in,1.0f/60.0f);
   if(!(pad.btns & PAD_CIRCLE)) {
    player->transform.position.x=0.0f;
    player->transform.position.z=0.0f;
    player->transform.rotation.y=0.0f;
-   mission=0;
+   cameraYaw=0.0f; cameraPitch=0.25f; mission=0;
   }
   if(player->transform.position.x < -28.0f) player->transform.position.x=-28.0f;
   if(player->transform.position.x > 28.0f) player->transform.position.x=28.0f;
@@ -207,8 +256,11 @@ static void render(void) {
   create_view_screen(viewScreen,graph_aspect_ratio(),-3.0f,3.0f,-2.2f,2.2f,1.0f,2000.0f);
  }
  nx_camera_follow(&nxCamera,&nxScene.entities[nxPlayer],1.0f/60.0f);
- cameraPos[0]=nxCamera.position.x; cameraPos[1]=nxCamera.position.y; cameraPos[2]=nxCamera.position.z;
- cameraRot[0]=0.12f; cameraRot[1]=0.0f; cameraRot[2]=0.0f;
+ /* Keep the camera behind the player while allowing right-stick orbit. */
+ cameraPos[0]=px+sinf(cameraYaw)*cameraDistance;
+ cameraPos[1]=cameraPitch*cameraDistance;
+ cameraPos[2]=pz+cosf(cameraYaw)*cameraDistance;
+ cameraRot[0]=cameraPitch; cameraRot[1]=cameraYaw; cameraRot[2]=0.0f;
  tag=packets[ctx]->data; q=tag+1;
  q=draw_disable_tests(q,0,&zbuf);
  q=draw_clear(q,0,2048-SW/2,2048-SH/2,SW,SH,90,135,165);
@@ -276,10 +328,12 @@ static void render(void) {
   p[0]=px-1.5f; p[1]=-8.0f; q=drawCube(q,viewScreen,p,r,1.1f,3.0f,1.2f,28,32,42,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px+1.5f; q=drawCube(q,viewScreen,p,r,1.1f,3.0f,1.2f,28,32,42,tmp,xyz,rgbaq,&prim,&base);
  }
- /* clear navigation HUD: mission target, mini-map and controller guide */
+ /* Clear, readable HUD drawn above the 3D world. */
+ q=draw_disable_tests(q,0,&zbuf);
  q=rect(q,12,12,250,34,10,15,24);
  q=rect(q,20,20,12,18,padConnected?45:220,padConnected?220:45,55);
- q=rect(q,20,20,12,18,245,185,35);
+ q=drawText(q,42,19,1,"RED CITY",235,235,240);
+ q=drawText(q,145,19,1,padConnected?"PAD OK":"NO PAD",padConnected?90:245,padConnected?225:85,padConnected?130:85);
  q=rect(q,40,18,150,5,235,235,235);
  q=rect(q,40,29,205,5,90,190,220);
  q=rect(q,SW-116,12,104,104,10,15,24);
@@ -289,6 +343,8 @@ static void render(void) {
  q=rect(q,SW-66+(int)(px*0.7f),64+(int)(pz*0.18f),9,9,245,45,45);
  q=rect(q,SW-70,27,11,11,255,205,55);
  q=rect(q,12,SH-46,275,34,10,15,24);
+ q=drawText(q,22,SH-37,1,"MOVE LEFT STICK / D-PAD",225,230,235);
+ q=drawText(q,22,SH-23,1,"CAMERA R-STICK  SPRINT X",145,185,215);
  q=rect(q,22,SH-36,20,4,245,245,245);
  q=rect(q,30,SH-41,4,14,245,245,245);
  q=rect(q,62,SH-36,20,4,245,245,245);

@@ -220,7 +220,7 @@ static void updatePad(void) {
   if(padConnected && (ry>0.22f || ry< -0.22f)) {
    cameraPitch-=ry*0.007f;
    if(cameraPitch<0.08f) cameraPitch=0.08f;
-   if(cameraPitch>1.35f) cameraPitch=1.35f;
+   if(cameraPitch>1.48f) cameraPitch=1.48f;
   }
   if(padConnected && !(pad.btns & PAD_L1)) cameraYaw-=0.022f;
   if(padConnected && !(pad.btns & PAD_R1)) cameraYaw+=0.022f;
@@ -503,6 +503,13 @@ static void render(void) {
    np[0]-=0.35f; np[1]=-1.65f;
    q=drawCube(q,viewScreen,np,vr,0.28f,0.10f,0.10f,105,55,48,tmp,xyz,rgbaq,&prim,&base);
   }
+ }
+ /* Soft contact shadow under Sophia makes her feet read against the asphalt. */
+ if(!inCar) {
+  VECTOR sh={px,-11.82f,pz,1},sr={0,0,0,1};
+  q=drawCube(q,viewScreen,sh,sr,2.7f,0.10f,1.8f,28,30,32,tmp,xyz,rgbaq,&prim,&base);
+  sh[1]=-11.78f; sh[2]=pz-0.9f;
+  q=drawCube(q,viewScreen,sh,sr,1.7f,0.08f,0.7f,35,36,38,tmp,xyz,rgbaq,&prim,&base);
  }
  /* Render the drivable car when occupied; otherwise render the player. */
  if(inCar) {

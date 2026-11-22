@@ -346,7 +346,7 @@ static void render(void) {
   cameraRot[0]=cameraPitch; cameraRot[1]=cy; cameraRot[2]=0.0f; }
  tag=packets[ctx]->data; q=tag+1;
  q=draw_disable_tests(q,0,&zbuf);
- q=draw_clear(q,0,2048-SW/2,2048-SH/2,SW,SH,90,135,165);
+ q=draw_clear(q,0,2048-SW/2,2048-SH/2,SW,SH,weatherType==3?72:(weatherType==4?145:(weatherType==2?112:90)),weatherType==3?88:(weatherType==4?155:(weatherType==2?112:135)),weatherType==3?105:(weatherType==4?175:(weatherType==2?112:165)));
  q=draw_enable_tests(q,0,&zbuf);
  /* Weather and skyline: layered clouds, a warm sun and distant hills. */
  { int w; VECTOR wr={0,0,0,1};
@@ -365,6 +365,14 @@ static void render(void) {
     q=drawCube(q,viewScreen,hill,wr,18.0f,24.0f,30.0f,78,105,105,tmp,xyz,rgbaq,&prim,&base);
    }
  }
+ /* Sparse wind-driven dust / rain / snow particles near the player. */
+ { int k; for(k=0;k<12;k++) {
+    float phase=dustPhase+(float)k*1.73f;
+    VECTOR particle={px+sinf(phase*0.7f)* (8.0f+windStrength*8.0f),-8.0f+(float)(k%4)*2.2f,pz-10.0f-(float)k*4.5f,1};
+    if(weatherType==3) { particle[1]=8.0f+(float)(k%5)*3.0f; particle[0]+=sinf(phase)*2.0f; q=drawCube(q,viewScreen,particle,wr,0.07f,1.1f,0.07f,165,185,205,tmp,xyz,rgbaq,&prim,&base); }
+    else if(weatherType==4) { particle[1]=-3.0f+(float)(k%6)*3.0f; q=drawCube(q,viewScreen,particle,wr,0.18f,0.18f,0.18f,225,230,238,tmp,xyz,rgbaq,&prim,&base); }
+    else if(weatherType==2 || windStrength>0.9f) { q=drawCube(q,viewScreen,particle,wr,0.16f,0.08f,0.16f,150,132,105,tmp,xyz,rgbaq,&prim,&base); }
+   } }
  /* road slab and city blocks form a small 3D street */
  { VECTOR p={0,-13,-205,1},r={0,0,0,1};
    q=drawCube(q,viewScreen,p,r,44,1,925,58,61,67,tmp,xyz,rgbaq,&prim,&base);
@@ -504,6 +512,8 @@ static void render(void) {
    /* hair cap and face details are placed on the camera-facing (+Z) side */
    np[1]=-0.35f; np[2]=n->transform.position.z+0.72f;
    q=drawCube(q,viewScreen,np,vr,0.9f,0.35f,0.35f,(i&1)?45:65,(i&1)?30:42,(i&1)?28:35,tmp,xyz,rgbaq,&prim,&base);
+   /* Long-haired female pedestrians get two independently swaying hair locks. */
+   if((i&1)==0) { VECTOR nh=np; float sway=sinf(nxClock.elapsed*4.4f+(float)i)*windStrength*0.45f; nh[1]=-2.7f; nh[2]=n->transform.position.z-0.55f; nh[0]=n->transform.position.x-0.62f+sway; q=drawCube(q,viewScreen,nh,vr,0.34f,2.2f,0.38f,48,30,27,tmp,xyz,rgbaq,&prim,&base); nh[0]=n->transform.position.x+0.62f-sway; q=drawCube(q,viewScreen,nh,vr,0.34f,2.2f,0.38f,48,30,27,tmp,xyz,rgbaq,&prim,&base); }
    np[0]-=2.1f; np[1]=-5.2f; q=drawCube(q,viewScreen,np,vr,0.65f,2.5f,0.7f,45,65,115,tmp,xyz,rgbaq,&prim,&base);
    np[0]+=4.2f; q=drawCube(q,viewScreen,np,vr,0.65f,2.5f,0.7f,45,65,115,tmp,xyz,rgbaq,&prim,&base);
    np[0]-=2.1f; np[1]=-9.7f; np[2]-=0.4f;

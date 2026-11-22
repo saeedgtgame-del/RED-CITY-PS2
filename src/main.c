@@ -1,576 +1,177 @@
-
 #include <kernel.h>
 #include <stdlib.h>
+#include <malloc.h>
+#include <math.h>
 #include <tamtypes.h>
+#include <math3d.h>
+#include <packet.h>
+#include <dma_tags.h>
+#include <gif_tags.h>
+#include <gs_psm.h>
 #include <dma.h>
 #include <graph.h>
 #include <draw.h>
-#include <draw2d.h>
-#include <packet.h>
-#include <gs_psm.h>
+#include <draw3d.h>
 #include <libpad.h>
+#include "mesh_data.c"
 
 #define SW 640
-#define SH 512
+#define SH 448
+#define OBJECTS 15
 
 static framebuffer_t frame;
 static zbuffer_t zbuf;
-static packet_t *packet;
-
-static unsigned char padBuffer[256]
-    __attribute__((aligned(64)));
-
+static unsigned char padBuf[256] __attribute__((aligned(64)));
 static struct padButtonStatus pad;
+static int padReady=0, mission=0, logoFrames=0;
+static float px=0.0f, pz=0.0f, heading=0.0f;
+static VECTOR cameraPos={0.0f,28.0f,100.0f,1.0f};
+static VECTOR cameraRot={0.0f,0.0f,0.0f,1.0f};
+static VECTOR objPos={0.0f,0.0f,0.0f,1.0f};
+static VECTOR objRot={0.0f,0.0f,0.0f,1.0f};
 
-static int padReady = 0;
-static int missionComplete = 0;
-static int missionIndex = 0;
-static const float missionX[10] = {320,90,545,320,90,545,320,90,545,320};
-static const float missionY[10] = {88,120,120,220,310,310,420,420,220,470};
-
-static float playerX = 320.0f;
-static float playerY = 425.0f;
-
-/* --------------------------------
-   BASIC RECTANGLE
--------------------------------- */
-
-static qword_t *box(
-    qword_t *q,
-    float x, float y,
-    float w, float h,
-    int r, int g, int b)
-{
-    rect_t rect;
-
-    rect.v0.x = x;
-    rect.v0.y = y;
-    rect.v0.z = 1;
-
-    rect.v1.x = x + w;
-    rect.v1.y = y + h;
-    rect.v1.z = 1;
-
-    rect.color.r = r;
-    rect.color.g = g;
-    rect.color.b = b;
-    rect.color.a = 128;
-    rect.color.q = 1.0f;
-
-    return draw_rect_filled(q, 0, &rect);
+static void initGS(void) {
+ frame.width=SW; frame.height=SH; frame.mask=0; frame.psm=GS_PSM_32;
+ frame.address=graph_vram_allocate(SW,SH,GS_PSM_32,GRAPH_ALIGN_PAGE);
+ zbuf.enable=DRAW_ENABLE; zbuf.mask=0; zbuf.method=ZTEST_METHOD_GREATER_EQUAL; zbuf.zsm=GS_ZBUF_32;
+ zbuf.address=graph_vram_allocate(SW,SH,GS_ZBUF_32,GRAPH_ALIGN_PAGE);
+ graph_initialize(frame.address,SW,SH,GS_PSM_32,0,0);
+ packet_t *p=packet_init(32,PACKET_NORMAL); qword_t *q=p->data;
+ q=draw_setup_environment(q,0,&frame,&zbuf);
+ q=draw_primitive_xyoffset(q,0,2048-SW/2,2048-SH/2);
+ q=draw_finish(q);
+ dma_channel_send_normal(DMA_CHANNEL_GIF,p->data,q-p->data,0,0);
+ dma_wait_fast(); packet_free(p);
 }
 
-static qword_t *fadeBox(
-    qword_t *q,
-    int x, int y, int w, int h,
-    int r, int g, int b, int fade)
-{
-    r = r * fade / 255;
-    g = g * fade / 255;
-    b = b * fade / 255;
-
-    return box(q, x, y, w, h, r, g, b);
+static qword_t *rect(qword_t *q,int x,int y,int w,int h,int r,int g,int b) {
+ rect_t a; a.v0.x=x; a.v0.y=y; a.v0.z=1; a.v1.x=x+w; a.v1.y=y+h; a.v1.z=1;
+ a.color.r=r; a.color.g=g; a.color.b=b; a.color.a=128; a.color.q=1.0f;
+ return draw_rect_filled(q,0,&a);
+}
+static void showLogo(void) {
+ packet_t *p=packet_init(2048,PACKET_NORMAL); qword_t *q=p->data;
+ q=draw_disable_tests(q,0,&zbuf);
+ q=draw_clear(q,0,2048-SW/2,2048-SH/2,SW,SH,3,4,9);
+ q=rect(q,247,105,18,112,230,24,38); q=rect(q,265,190,108,18,230,24,38);
+ q=rect(q,355,105,18,112,230,24,38);
+ q=rect(q,265,105,18,86,245,245,245); q=rect(q,283,126,18,22,245,245,245);
+ q=rect(q,301,148,18,22,245,245,245); q=rect(q,319,170,18,22,245,245,245);
+ q=rect(q,337,192,18,18,245,245,245);
+ /* Stylized NEXON / GAMES wordmark blocks */
+ q=rect(q,172,260,18,48,245,245,245); q=rect(q,190,290,18,18,245,245,245);
+ q=rect(q,208,260,18,48,245,245,245); q=rect(q,244,260,18,48,245,245,245);
+ q=rect(q,262,260,18,18,245,245,245); q=rect(q,280,260,18,48,245,245,245);
+ q=rect(q,298,260,18,48,245,245,245); q=rect(q,316,260,18,18,245,245,245);
+ q=rect(q,334,260,18,48,245,245,245); q=rect(q,352,260,18,48,245,245,245);
+ q=rect(q,150,370,340,4,230,24,38);
+ q=draw_finish(q); dma_wait_fast();
+ dma_channel_send_normal(DMA_CHANNEL_GIF,p->data,q-p->data,0,0);
+ draw_wait_finish(); graph_wait_vsync(); packet_free(p);
+}
+static void initPad(void) {
+ int i;
+ if(padInit(0)!=1) return;
+ if(!padPortOpen(0,0,padBuf)) return;
+ for(i=0;i<120;i++) {
+  int s=padGetState(0,0);
+  if(s==PAD_STATE_STABLE) { padReady=1; break; }
+  if(s==PAD_STATE_DISCONN) break;
+  graph_wait_vsync();
+ }
+}
+static void updatePad(void) {
+ int s;
+ if(!padReady) {
+  s=padGetState(0,0);
+  if(s==PAD_STATE_STABLE) padReady=1;
+  return;
+ }
+ s=padGetState(0,0);
+ if(s!=PAD_STATE_STABLE) { padReady=0; return; }
+ if(!padRead(0,0,&pad)) return;
+ /* libpad button bits are active-low: zero means pressed */
+ if(!(pad.btns & PAD_LEFT))  px-=1.8f;
+ if(!(pad.btns & PAD_RIGHT)) px+=1.8f;
+ if(!(pad.btns & PAD_UP))    pz-=2.2f;
+ if(!(pad.btns & PAD_DOWN))  pz+=2.2f;
+ if(!(pad.btns & PAD_L1)) heading-=0.035f;
+ if(!(pad.btns & PAD_R1)) heading+=0.035f;
+ if(px < -28) px=-28; if(px>28) px=28;
+ if(pz < -180) pz=-180; if(pz>20) pz=20;
+ if(!(pad.btns & PAD_CROSS)) { mission=(mission+1)%10; }
 }
 
-/* --------------------------------
-   CUSTOM FONT
--------------------------------- */
-
-static unsigned char glyph(char c, int row)
-{
-    static const unsigned char A[7] =
-        {14,17,17,31,17,17,17};
-
-    static const unsigned char E[7] =
-        {31,16,16,30,16,16,31};
-
-    static const unsigned char G[7] =
-        {14,17,16,23,17,17,15};
-
-    static const unsigned char M[7] =
-        {17,27,21,21,17,17,17};
-
-    static const unsigned char N[7] =
-        {17,25,21,19,17,17,17};
-
-    static const unsigned char O[7] =
-        {14,17,17,17,17,17,14};
-
-    static const unsigned char S[7] =
-        {15,16,16,14,1,1,30};
-
-    static const unsigned char X[7] =
-        {17,17,10,4,10,17,17};
-
-    if (row < 0 || row > 6)
-        return 0;
-
-    switch (c)
-    {
-        case 'A': return A[row];
-        case 'E': return E[row];
-        case 'G': return G[row];
-        case 'M': return M[row];
-        case 'N': return N[row];
-        case 'O': return O[row];
-        case 'S': return S[row];
-        case 'X': return X[row];
-        default: return 0;
-    }
+static void drawCube(qword_t *q, MATRIX viewScreen, VECTOR pos, VECTOR rot,
+                     float sx,float sy,float sz,int cr,int cg,int cb,
+                     VECTOR *tmp, xyz_t *xyz, color_t *rgbaq,
+                     prim_t *prim,color_t *base) {
+ MATRIX lw,wv,ls; int i;
+ VECTOR scale={sx,sy,sz,1.0f};
+ create_local_world(lw,pos,rot);
+ /* Scale the object's local matrix columns. */
+ { int r; for(r=0;r<4;r++){ lw[r][0]*=sx; lw[r][1]*=sy; lw[r][2]*=sz; } }
+ create_world_view(wv,cameraPos,cameraRot);
+ create_local_screen(ls,lw,wv,viewScreen);
+ calculate_vertices(tmp,vertex_count,vertices,ls);
+ draw_convert_xyz(xyz,2048,2048,32,vertex_count,(vertex_f_t*)tmp);
+ { color_f_t c[24]; for(i=0;i<24;i++){ c[i].r=cr/255.0f; c[i].g=cg/255.0f; c[i].b=cb/255.0f; c[i].a=1.0f; } 
+   draw_convert_rgbq(rgbaq,vertex_count,(vertex_f_t*)tmp,c,0x80); }
+ q=draw_prim_start(q,0,prim,base);
+ for(i=0;i<points_count;i++){ q->dw[0]=rgbaq[points[i]].rgbaq; q->dw[1]=xyz[points[i]].xyz; q++; }
+ /* qword alignment handled by primitive end */
+ q=draw_prim_end(q,2,DRAW_RGBAQ_REGLIST);
 }
-
-static qword_t *drawText(
-    qword_t *q,
-    const char *text,
-    int x, int y,
-    int scale,
-    int r, int g, int b,
-    int fade)
-{
-    int i, row, col;
-
-    for (i = 0; text[i] != 0; i++)
-    {
-        for (row = 0; row < 7; row++)
-        {
-            unsigned char bits = glyph(text[i], row);
-
-            for (col = 0; col < 5; col++)
-            {
-                if (bits & (1 << (4 - col)))
-                {
-                    q = fadeBox(
-                        q,
-                        x + i * 6 * scale + col * scale,
-                        y + row * scale,
-                        scale, scale,
-                        r, g, b, fade);
-                }
-            }
-        }
-    }
-
-    return q;
+static void render(void) {
+ static packet_t *packets[2]={0,0}; static int ctx=0;
+ static VECTOR *tmp=0; static xyz_t *xyz=0; static color_t *rgbaq=0;
+ static prim_t prim; static color_t base; static MATRIX viewScreen;
+ qword_t *q,*tag; int i;
+ if(!packets[0]) {
+  packets[0]=packet_init(4096,PACKET_NORMAL); packets[1]=packet_init(4096,PACKET_NORMAL);
+  tmp=memalign(128,sizeof(VECTOR)*vertex_count); xyz=memalign(128,sizeof(xyz_t)*vertex_count);
+  rgbaq=memalign(128,sizeof(color_t)*vertex_count);
+  prim.type=PRIM_TRIANGLE; prim.shading=PRIM_SHADE_GOURAUD; prim.mapping=DRAW_DISABLE;
+  prim.fogging=DRAW_DISABLE; prim.blending=DRAW_DISABLE; prim.antialiasing=DRAW_ENABLE;
+  prim.mapping_type=PRIM_MAP_ST; prim.colorfix=PRIM_UNFIXED;
+  base.r=128;base.g=128;base.b=128;base.a=128;base.q=1.0f;
+  create_view_screen(viewScreen,graph_aspect_ratio(),-3.0f,3.0f,-2.2f,2.2f,1.0f,2000.0f);
+ }
+ cameraPos.x=px; cameraPos.y=30.0f; cameraPos.z=pz+105.0f;
+ cameraRot.x=0.10f; cameraRot.y=0.0f; cameraRot.z=0.0f;
+ tag=packets[ctx]->data; q=tag+1;
+ q=draw_disable_tests(q,0,&zbuf);
+ q=draw_clear(q,0,2048-SW/2,2048-SH/2,SW,SH,90,135,165);
+ q=draw_enable_tests(q,0,&zbuf);
+ /* road slab and city blocks form a small 3D street */
+ { VECTOR p={0,-13,-75,1},r={0,0,0,1}; drawCube(q,viewScreen,p,r,35,1,125,45,48,54,tmp,xyz,rgbaq,&prim,&base); }
+ for(i=0;i<6;i++) {
+  VECTOR p1={-48,0,-25.0f-i*42.0f,1},p2={48,0,-25.0f-i*42.0f,1},r={0,0,0,1};
+  drawCube(q,viewScreen,p1,r,12,18+(i%3)*4,12,120,78,62,tmp,xyz,rgbaq,&prim,&base);
+  drawCube(q,viewScreen,p2,r,12,22+(i%2)*5,12,75,91,112,tmp,xyz,rgbaq,&prim,&base);
+ }
+ /* Player avatar is a 3D block character; camera follows from behind */
+ { VECTOR p={px,-2,pz,1},r={0,heading,0,1};
+  drawCube(q,viewScreen,p,r,3.2f,7.0f,2.4f,190,35,42,tmp,xyz,rgbaq,&prim,&base);
+  p.y=6.0f; drawCube(q,viewScreen,p,r,2.6f,2.6f,2.6f,220,175,140,tmp,xyz,rgbaq,&prim,&base);
+ }
+ /* Simple HUD bars, safely inside frame */
+ q=rect(q,12,12,210,8,12,15,22);
+ q=rect(q,12,12,(mission+1)*20,8,220,35,42);
+ q=rect(q,SW-150,12,138,8,12,15,22);
+ q=rect(q,SW-150,12,mission*13,8,45,210,110);
+ q=draw_finish(q);
+ DMATAG_END(tag,(q-tag)-1,0,0,0);
+ dma_wait_fast(); dma_channel_send_chain(DMA_CHANNEL_GIF,tag,q-tag,0,0);
+ ctx^=1; draw_wait_finish(); graph_wait_vsync();
 }
-
-/* --------------------------------
-   NEXON GAMES LOGO
--------------------------------- */
-
-static void drawLogo(int fade)
-{
-    qword_t *q = packet->data;
-
-    q = draw_clear(
-        q, 0,
-        2048 - 320,
-        2048 - 256,
-        SW, SH,
-        0, 0, 0);
-
-    /* Red logo symbol */
-    q = fadeBox(q, 250, 105, 18, 105,
-                235, 0, 25, fade);
-
-    q = fadeBox(q, 270, 190, 100, 16,
-                235, 0, 25, fade);
-
-    q = fadeBox(q, 355, 105, 18, 105,
-                235, 0, 25, fade);
-
-    /* White N symbol */
-    q = fadeBox(q, 260, 110, 20, 95,
-                245, 245, 245, fade);
-
-    q = fadeBox(q, 280, 110, 20, 25,
-                245, 245, 245, fade);
-
-    q = fadeBox(q, 300, 135, 20, 25,
-                245, 245, 245, fade);
-
-    q = fadeBox(q, 320, 160, 20, 25,
-                245, 245, 245, fade);
-
-    q = fadeBox(q, 340, 185, 20, 20,
-                245, 245, 245, fade);
-
-    /* Company name */
-    q = drawText(q, "NEXON",
-                 175, 255, 8,
-                 245, 245, 245, fade);
-
-    q = drawText(q, "GAMES",
-                 205, 335, 5,
-                 245, 245, 245, fade);
-
-    /* Red lines */
-    q = fadeBox(q, 130, 380, 110, 4,
-                235, 0, 25, fade);
-
-    q = fadeBox(q, 400, 380, 110, 4,
-                235, 0, 25, fade);
-
-    q = draw_finish(q);
-
-    dma_wait_fast();
-
-    dma_channel_send_normal(
-        DMA_CHANNEL_GIF,
-        packet->data,
-        q - packet->data,
-        0, 0);
-
-    draw_wait_finish();
-    graph_wait_vsync();
-}
-
-/* --------------------------------
-   SEVEN SECOND INTRO
--------------------------------- */
-
-static void companyIntro(void)
-{
-    int frameNumber;
-    int fade;
-
-    /*
-       420 frames at approximately
-       60 frames per second = 7 seconds.
-
-       First 300 frames: full logo.
-       Last 120 frames: fade out.
-    */
-
-    for (frameNumber = 0;
-         frameNumber < 420;
-         frameNumber++)
-    {
-        fade = 255;
-
-        if (frameNumber >= 300)
-        {
-            fade =
-                255 * (419 - frameNumber) / 120;
-        }
-
-        drawLogo(fade);
-    }
-}
-
-/* --------------------------------
-   GRAPHICS INITIALIZATION
--------------------------------- */
-
-static void initGraphics(void)
-{
-    frame.width = SW;
-    frame.height = SH;
-    frame.mask = 0;
-    frame.psm = GS_PSM_32;
-
-    frame.address = graph_vram_allocate(
-        SW, SH, GS_PSM_32, GRAPH_ALIGN_PAGE);
-
-    zbuf.enable = DRAW_ENABLE;
-    zbuf.mask = 0;
-    zbuf.method = ZTEST_METHOD_GREATER_EQUAL;
-    zbuf.zsm = GS_ZBUF_32;
-
-    zbuf.address = graph_vram_allocate(
-        SW, SH, GS_ZBUF_32, GRAPH_ALIGN_PAGE);
-
-    graph_initialize(
-        frame.address,
-        SW, SH,
-        GS_PSM_32,
-        0, 0);
-
-    packet_t *setup = packet_init(32, PACKET_NORMAL);
-
-    qword_t *q = setup->data;
-
-    q = draw_setup_environment(
-        q, 0, &frame, &zbuf);
-
-    q = draw_primitive_xyoffset(
-        q, 0, 2048 - 320, 2048 - 256);
-
-    q = draw_finish(q);
-
-    dma_channel_send_normal(
-        DMA_CHANNEL_GIF,
-        setup->data,
-        q - setup->data,
-        0, 0);
-
-    dma_wait_fast();
-
-    packet_free(setup);
-
-    packet = packet_init(1024, PACKET_NORMAL);
-}
-
-/* --------------------------------
-   CONTROLLER
--------------------------------- */
-
-static void initController(void)
-{
-    if (padInit(0) == 1)
-    {
-        if (padPortOpen(0, 0, padBuffer))
-            padReady = 1;
-    }
-}
-
-static void updatePlayer(void)
-{
-    if (!padReady || missionComplete)
-        return;
-
-    if (padGetState(0, 0) != PAD_STATE_STABLE)
-        return;
-
-    if (!padRead(0, 0, &pad))
-        return;
-
-    if (!(pad.btns & PAD_UP))
-        playerY -= 2.5f;
-
-    if (!(pad.btns & PAD_DOWN))
-        playerY += 2.5f;
-
-    if (!(pad.btns & PAD_LEFT))
-        playerX -= 2.5f;
-
-    if (!(pad.btns & PAD_RIGHT))
-        playerX += 2.5f;
-
-    if (playerX < 20) playerX = 20;
-    if (playerX > 620) playerX = 620;
-
-    if (playerY < 45) playerY = 45;
-    if (playerY > 485) playerY = 485;
-
-    {
-        float dx = playerX - missionX[missionIndex];
-        float dy = playerY - missionY[missionIndex];
-        if ((dx * dx + dy * dy) < 26.0f * 26.0f)
-        {
-            missionIndex++;
-            if (missionIndex >= 10) { missionIndex = 9; missionComplete = 1; }
-            else { playerX = 320.0f; playerY = 425.0f; }
-        }
-    }
-}
-
-/* --------------------------------
-   CITY
--------------------------------- */
-
-static void drawCity(qword_t **q)
-{
-    int y, x;
-
-    /* Grass and ground */
-    *q = box(*q, 0, 0, SW, SH,
-             72, 82, 69);
-
-    /* Main road */
-    *q = box(*q, 225, 0, 190, SH,
-             38, 40, 44);
-
-    /* Sidewalks */
-    *q = box(*q, 205, 0, 20, SH,
-             145, 135, 115);
-
-    *q = box(*q, 415, 0, 20, SH,
-             145, 135, 115);
-
-    /* Road lines */
-    for (y = 10; y < SH; y += 70)
-    {
-        *q = box(*q, 318, y, 4, 34,
-                 230, 190, 110);
-    }
-
-    /* Cross street */
-    *q = box(*q, 0, 195, SW, 48,
-             42, 44, 48);
-
-    for (x = 15; x < SW; x += 90)
-    {
-        *q = box(*q, x, 217, 45, 3,
-                 220, 195, 145);
-    }
-
-    /* Left buildings */
-    *q = box(*q, 29, 58, 135, 115,
-             105, 70, 50);
-
-    *q = box(*q, 29, 253, 135, 115,
-             85, 65, 53);
-
-    *q = box(*q, 50, 82, 25, 25,
-             185, 145, 95);
-
-    *q = box(*q, 90, 82, 25, 25,
-             185, 145, 95);
-
-    *q = box(*q, 50, 278, 25, 25,
-             175, 135, 95);
-
-    *q = box(*q, 90, 278, 25, 25,
-             175, 135, 95);
-
-    /* Right buildings */
-    *q = box(*q, 464, 58, 135, 115,
-             75, 82, 95);
-
-    *q = box(*q, 464, 253, 135, 115,
-             110, 65, 48);
-
-    *q = box(*q, 485, 82, 25, 25,
-             175, 175, 165);
-
-    *q = box(*q, 525, 82, 25, 25,
-             175, 175, 165);
-
-    *q = box(*q, 485, 278, 25, 25,
-             190, 140, 85);
-
-    *q = box(*q, 525, 278, 25, 25,
-             190, 140, 85);
-
-    /* Current mission marker */
-    if (!missionComplete) {
-        int mx = (int)missionX[missionIndex], my = (int)missionY[missionIndex];
-        *q = box(*q, mx-13, my-13, 26, 26, 245, 190, 35);
-        *q = box(*q, mx-7, my-7, 14, 14, 25, 230, 95);
-        *q = box(*q, mx-2, my-20, 4, 40, 245, 245, 245);
-        *q = box(*q, mx-20, my-2, 40, 4, 245, 245, 245);
-    }
-}
-
-/* --------------------------------
-   PLAYER
--------------------------------- */
-
-static void drawPlayer(qword_t **q)
-{
-    *q = box(*q,
-        playerX - 9,
-        playerY + 7,
-        20, 8,
-        25, 25, 25);
-
-    *q = box(*q,
-        playerX - 7,
-        playerY - 5,
-        15, 22,
-        185, 35, 35);
-
-    *q = box(*q,
-        playerX - 5,
-        playerY - 14,
-        11, 10,
-        220, 175, 135);
-
-    *q = box(*q,
-        playerX - 5,
-        playerY - 16,
-        11, 4,
-        35, 27, 25);
-}
-
-/* --------------------------------
-   HUD
--------------------------------- */
-
-static void drawHUD(qword_t **q)
-{
-    *q = box(*q, 0, 0, SW, 35,
-             12, 15, 23);
-
-    /* Red logo mark */
-    *q = box(*q, 12, 9, 12, 18,
-             230, 25, 35);
-
-    /* Ten-step mission progress */
-    *q = box(*q, 450, 12, 165, 9, 55, 55, 60);
-    *q = box(*q, 450, 12, missionComplete ? 165 : missionIndex * 16, 9, 40, 220, 100);
-    { int i; for (i=1; i<10; i++) *q = box(*q, 450+i*16, 10, 2, 13, 12, 15, 23); }
-}
-
-/* --------------------------------
-   GAME RENDER
--------------------------------- */
-
-static void renderGame(void)
-{
-    qword_t *q = packet->data;
-
-    q = draw_disable_tests(q, 0, &zbuf);
-
-    q = draw_clear(
-        q, 0,
-        2048.0f - 320.0f,
-        2048.0f - 256.0f,
-        SW, SH,
-        72, 82, 69);
-
-    q = draw_enable_tests(q, 0, &zbuf);
-
-    drawCity(&q);
-    drawPlayer(&q);
-    drawHUD(&q);
-
-    if (missionComplete) {
-        q = box(q, 150, 205, 340, 95, 12, 45, 28);
-        q = box(q, 175, 230, 290, 8, 80, 240, 130);
-        q = box(q, 205, 255, 240, 8, 80, 240, 130);
-        q = box(q, 245, 278, 150, 5, 245, 190, 35);
-    }
-
-    q = draw_finish(q);
-
-    dma_wait_fast();
-
-    dma_channel_send_normal(
-        DMA_CHANNEL_GIF,
-        packet->data,
-        q - packet->data,
-        0, 0);
-
-    draw_wait_finish();
-    graph_wait_vsync();
-}
-
-/* --------------------------------
-   MAIN
--------------------------------- */
-
-int main(void)
-{
-    dma_channel_initialize(
-        DMA_CHANNEL_GIF, NULL, 0);
-
-    dma_channel_fast_waits(
-        DMA_CHANNEL_GIF);
-
-    initGraphics();
-
-    /* Company logo intro */
-    companyIntro();
-
-    /* Start game */
-    initController();
-
-    for (;;)
-    {
-        updatePlayer();
-        renderGame();
-    }
-
-    return 0;
+int main(void) {
+ dma_channel_initialize(DMA_CHANNEL_GIF,NULL,0);
+ dma_channel_fast_waits(DMA_CHANNEL_GIF);
+ initGS();
+ /* Logo intro is intentionally short while graphics initialize. */
+ for(logoFrames=0;logoFrames<180;logoFrames++) showLogo();
+ initPad();
+ for(;;) { updatePad(); render(); }
+ return 0;
 }

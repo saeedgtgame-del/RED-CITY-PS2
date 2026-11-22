@@ -483,8 +483,14 @@ static void render(void) {
   {
    NX_Entity *n=&nxScene.entities[nxPedestrians[i]];
    VECTOR np={n->transform.position.x,-5.2f,n->transform.position.z,1};
-   { int shirtR[4]={65,145,48,175},shirtG[4]={95,65,125,105},shirtB[4]={155,75,75,55};
-     q=drawCube(q,viewScreen,np,vr,1.5f,3.0f,1.5f,shirtR[i],shirtG[i],shirtB[i],tmp,xyz,rgbaq,&prim,&base); }
+   { int shirtR[4]={34,145,48,175},shirtG[4]={36,65,125,105},shirtB[4]={43,75,75,55};
+     /* NPC 0 is Alex: dark jacket; the remaining pedestrians keep varied outfits. */
+     q=drawCube(q,viewScreen,np,vr,1.5f,3.0f,1.5f,shirtR[i],shirtG[i],shirtB[i],tmp,xyz,rgbaq,&prim,&base);
+     if(i==0) {
+       VECTOR lapel=np; lapel[1]=-4.4f; lapel[2]=n->transform.position.z+1.45f;
+       q=drawCube(q,viewScreen,lapel,vr,0.24f,1.4f,0.12f,105,105,110,tmp,xyz,rgbaq,&prim,&base);
+       lapel[0]+=0.55f; q=drawCube(q,viewScreen,lapel,vr,0.24f,1.4f,0.12f,105,105,110,tmp,xyz,rgbaq,&prim,&base);
+     } }
    np[1]=-1.2f;
    q=drawCube(q,viewScreen,np,vr,1.2f,1.2f,1.2f,(i&1)?190:220,(i&1)?135:175,(i&1)?110:145,tmp,xyz,rgbaq,&prim,&base);
    /* hair cap and face details are placed on the camera-facing (+Z) side */
@@ -502,6 +508,19 @@ static void render(void) {
    np[0]+=0.7f; q=drawCube(q,viewScreen,np,vr,0.13f,0.14f,0.10f,18,18,18,tmp,xyz,rgbaq,&prim,&base);
    np[0]-=0.35f; np[1]=-1.65f;
    q=drawCube(q,viewScreen,np,vr,0.28f,0.10f,0.10f,105,55,48,tmp,xyz,rgbaq,&prim,&base);
+   /* More readable low-poly faces: ears, brows, nose bridge and hairline. */
+   { VECTOR f=np; f[1]=-1.15f; f[2]=n->transform.position.z+1.42f;
+     f[0]=n->transform.position.x-0.72f;
+     q=drawCube(q,viewScreen,f,vr,0.18f,0.42f,0.18f,190,135,112,tmp,xyz,rgbaq,&prim,&base);
+     f[0]=n->transform.position.x+0.72f;
+     q=drawCube(q,viewScreen,f,vr,0.18f,0.42f,0.18f,190,135,112,tmp,xyz,rgbaq,&prim,&base);
+     f[0]=n->transform.position.x; f[1]=-1.28f; f[2]=n->transform.position.z+1.48f;
+     q=drawCube(q,viewScreen,f,vr,0.12f,0.28f,0.12f,185,125,105,tmp,xyz,rgbaq,&prim,&base);
+     f[1]=-0.78f; f[2]=n->transform.position.z+1.38f;
+     f[0]-=0.42f; q=drawCube(q,viewScreen,f,vr,0.30f,0.10f,0.10f,42,30,28,tmp,xyz,rgbaq,&prim,&base);
+     f[0]=n->transform.position.x+0.42f;
+     q=drawCube(q,viewScreen,f,vr,0.30f,0.10f,0.10f,42,30,28,tmp,xyz,rgbaq,&prim,&base);
+   }
   }
  }
  /* Soft contact shadow under Sophia makes her feet read against the asphalt. */
@@ -531,13 +550,18 @@ static void render(void) {
  } else {
  /* Player avatar with layered clothes, head, hair and face details. */
  { VECTOR p={px,-2.35f,pz,1},r={0,heading,0,1};
-  q=drawCube(q,viewScreen,p,r,3.2f,7.0f,2.4f,190,35,42,tmp,xyz,rgbaq,&prim,&base);
-  p[1]=5.65f; q=drawCube(q,viewScreen,p,r,2.6f,2.6f,2.6f,220,175,140,tmp,xyz,rgbaq,&prim,&base);
+  q=drawCube(q,viewScreen,p,r,3.2f,7.0f,2.4f,28,29,33,tmp,xyz,rgbaq,&prim,&base);
+  p[1]=5.65f; q=drawCube(q,viewScreen,p,r,2.6f,2.6f,2.6f,218,174,143,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px-4.0f; p[1]=-1.85f; p[2]=pz; q=drawCube(q,viewScreen,p,r,1.0f,4.5f,1.0f,190,35,42,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px+4.0f; q=drawCube(q,viewScreen,p,r,1.0f,4.5f,1.0f,190,35,42,tmp,xyz,rgbaq,&prim,&base);
   /* Extra layered jacket, shoulders, forearms, trousers and shoes. */
   p[0]=px; p[1]=1.2f; p[2]=pz-0.15f;
-  q=drawCube(q,viewScreen,p,r,3.35f,3.6f,2.55f,125,24,34,tmp,xyz,rgbaq,&prim,&base);
+  q=drawCube(q,viewScreen,p,r,3.35f,3.6f,2.55f,32,34,39,tmp,xyz,rgbaq,&prim,&base);
+  /* Leather-jacket seams and front zipper highlight, kept deliberately low-poly. */
+  p[0]=px-1.25f; p[1]=1.0f; p[2]=pz+1.25f;
+  q=drawCube(q,viewScreen,p,r,0.12f,2.4f,0.10f,125,125,132,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px+1.25f;
+  q=drawCube(q,viewScreen,p,r,0.12f,2.4f,0.10f,125,125,132,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px-4.0f; p[1]=-4.3f; p[2]=pz-0.15f;
   q=drawCube(q,viewScreen,p,r,0.85f,2.0f,0.9f,205,145,115,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px+4.0f;
@@ -560,6 +584,21 @@ static void render(void) {
   p[0]=px+0.72f; q=drawCube(q,viewScreen,p,r,0.22f,0.24f,0.16f,18,18,18,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px; p[1]=5.0f; p[2]=pz+2.55f; q=drawCube(q,viewScreen,p,r,0.18f,0.18f,0.16f,145,85,70,tmp,xyz,rgbaq,&prim,&base);
   p[1]=4.55f; q=drawCube(q,viewScreen,p,r,0.38f,0.10f,0.12f,105,38,42,tmp,xyz,rgbaq,&prim,&base);
+  /* Sophia's face framing: ears, eyebrows, nose and cheek highlights. */
+  p[0]=px-1.48f; p[1]=5.0f; p[2]=pz+2.28f;
+  q=drawCube(q,viewScreen,p,r,0.28f,0.52f,0.20f,195,145,119,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px+1.48f;
+  q=drawCube(q,viewScreen,p,r,0.28f,0.52f,0.20f,195,145,119,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px; p[1]=5.18f; p[2]=pz+2.72f;
+  q=drawCube(q,viewScreen,p,r,0.16f,0.38f,0.14f,190,132,112,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px-0.70f; p[1]=6.0f; p[2]=pz+2.52f;
+  q=drawCube(q,viewScreen,p,r,0.48f,0.13f,0.12f,45,29,27,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px+0.70f;
+  q=drawCube(q,viewScreen,p,r,0.48f,0.13f,0.12f,45,29,27,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px-0.62f; p[1]=4.78f; p[2]=pz+2.52f;
+  q=drawCube(q,viewScreen,p,r,0.28f,0.10f,0.08f,225,176,145,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px+0.62f;
+  q=drawCube(q,viewScreen,p,r,0.28f,0.10f,0.08f,225,176,145,tmp,xyz,rgbaq,&prim,&base);
  }
  }
  /* Full HUD: minimap bottom-left, health directly underneath. */

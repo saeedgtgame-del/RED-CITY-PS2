@@ -148,7 +148,7 @@ static void initNexonGame(void) {
  NX_Vec3 p;
  int i;
  nx_init(&nxScene);
- nxPlayer=nx_spawn(&nxScene,NX_ENTITY_PLAYER,(NX_Vec3){-29.0f,0.0f,0.0f});
+ nxPlayer=nx_spawn(&nxScene,NX_ENTITY_PLAYER,(NX_Vec3){-29.0f,-0.35f,0.0f});
  nx_set_player(&nxScene,nxPlayer);
  playerVehicle=nx_spawn(&nxScene,NX_ENTITY_VEHICLE,(NX_Vec3){-19.0f,-5.0f,-5.0f});
  nx_camera_init(&nxCamera,32.0f,12.0f);
@@ -216,9 +216,9 @@ static void updatePad(void) {
   if(!(pad.btns & PAD_UP))    in.moveZ=-1.0f;
   if(!(pad.btns & PAD_DOWN))  in.moveZ=1.0f;
   /* Right stick and shoulder buttons orbit the third-person camera. */
-  if(padConnected && (rx>0.22f || rx< -0.22f)) cameraYaw+=rx*0.018f;
+  if(padConnected && (rx>0.22f || rx< -0.22f)) cameraYaw-=rx*0.018f;
   if(padConnected && (ry>0.22f || ry< -0.22f)) {
-   cameraPitch+=ry*0.007f;
+   cameraPitch-=ry*0.007f;
    if(cameraPitch<0.12f) cameraPitch=0.12f;
    if(cameraPitch>0.42f) cameraPitch=0.42f;
   }
@@ -342,7 +342,13 @@ static void render(void) {
  q=draw_enable_tests(q,0,&zbuf);
  /* road slab and city blocks form a small 3D street */
  { VECTOR p={0,-13,-205,1},r={0,0,0,1};
-   q=drawCube(q,viewScreen,p,r,35,1,215,42,47,55,tmp,xyz,rgbaq,&prim,&base);
+   q=drawCube(q,viewScreen,p,r,35,1,215,58,61,67,tmp,xyz,rgbaq,&prim,&base);
+   /* Subtle asphalt repair strips and aggregate bands break up the flat slab. */
+   for(i=0;i<16;i++) {
+     VECTOR patch={-27.0f+(float)((i*17)%55),-11.78f,-14.0f-(float)i*24.0f,1};
+     q=drawCube(q,viewScreen,patch,r,1.2f+(float)(i%3)*0.45f,0.08f,3.0f+(float)(i%2)*1.5f,
+                (i&1)?66:51,(i&1)?69:55,(i&1)?75:61,tmp,xyz,rgbaq,&prim,&base);
+   }
    p[0]=-40; p[1]=-11; q=drawCube(q,viewScreen,p,r,5,1,220,105,105,110,tmp,xyz,rgbaq,&prim,&base);
    p[0]=40; q=drawCube(q,viewScreen,p,r,5,1,220,105,105,110,tmp,xyz,rgbaq,&prim,&base);
  }
@@ -401,13 +407,13 @@ static void render(void) {
   lp[0]=-31.0f; q=drawCube(q,viewScreen,lp,lr,2.0f,0.8f,1.0f,255,205,115,tmp,xyz,rgbaq,&prim,&base);
  }
  /* Sophia's house: facade, roof, door, windows and front path. */
- { VECTOR h={-53.0f,-1.0f,8.0f,1},hr={0,0,0,1};
+ { VECTOR h={-49.0f,-1.0f,8.0f,1},hr={0,0,0,1};
    q=drawCube(q,viewScreen,h,hr,13.0f,11.0f,12.0f,190,174,150,tmp,xyz,rgbaq,&prim,&base);
    h[1]=11.5f; q=drawCube(q,viewScreen,h,hr,14.0f,1.8f,13.0f,105,35,42,tmp,xyz,rgbaq,&prim,&base);
-   h[0]=-53.0f; h[1]=-5.5f; h[2]=-4.3f; q=drawCube(q,viewScreen,h,hr,2.0f,4.5f,0.35f,75,45,35,tmp,xyz,rgbaq,&prim,&base);
-   h[0]=-59.0f; h[1]=1.0f; h[2]=-4.4f; q=drawCube(q,viewScreen,h,hr,2.2f,2.0f,0.35f,75,155,195,tmp,xyz,rgbaq,&prim,&base);
-   h[0]=-47.0f; q=drawCube(q,viewScreen,h,hr,2.2f,2.0f,0.35f,75,155,195,tmp,xyz,rgbaq,&prim,&base);
-   h[0]=-53.0f; h[1]=-9.0f; h[2]=-1.0f; q=drawCube(q,viewScreen,h,hr,7.0f,0.25f,7.0f,135,130,120,tmp,xyz,rgbaq,&prim,&base);
+   h[0]=-49.0f; h[1]=-5.5f; h[2]=20.3f; q=drawCube(q,viewScreen,h,hr,2.0f,4.5f,0.35f,75,45,35,tmp,xyz,rgbaq,&prim,&base);
+   h[0]=-55.0f; h[1]=1.0f; h[2]=20.4f; q=drawCube(q,viewScreen,h,hr,2.2f,2.0f,0.35f,75,155,195,tmp,xyz,rgbaq,&prim,&base);
+   h[0]=-43.0f; q=drawCube(q,viewScreen,h,hr,2.2f,2.0f,0.35f,75,155,195,tmp,xyz,rgbaq,&prim,&base);
+   h[0]=-49.0f; h[1]=-9.0f; h[2]=25.0f; q=drawCube(q,viewScreen,h,hr,7.0f,0.25f,7.0f,135,130,120,tmp,xyz,rgbaq,&prim,&base);
  }
  /* Mission beacon advances through the ten-stage opening story. */
  if(mission<10) {
@@ -436,9 +442,13 @@ static void render(void) {
   {
    NX_Entity *n=&nxScene.entities[nxPedestrians[i]];
    VECTOR np={n->transform.position.x,-5.2f,n->transform.position.z,1};
-   q=drawCube(q,viewScreen,np,vr,1.5f,3.0f,1.5f,65,95,155,tmp,xyz,rgbaq,&prim,&base);
+   { int shirtR[4]={65,145,48,175},shirtG[4]={95,65,125,105},shirtB[4]={155,75,75,55};
+     q=drawCube(q,viewScreen,np,vr,1.5f,3.0f,1.5f,shirtR[i],shirtG[i],shirtB[i],tmp,xyz,rgbaq,&prim,&base); }
    np[1]=-1.2f;
-   q=drawCube(q,viewScreen,np,vr,1.2f,1.2f,1.2f,205,165,130,tmp,xyz,rgbaq,&prim,&base);
+   q=drawCube(q,viewScreen,np,vr,1.2f,1.2f,1.2f,(i&1)?190:220,(i&1)?135:175,(i&1)?110:145,tmp,xyz,rgbaq,&prim,&base);
+   /* hair cap and face details are placed on the camera-facing (+Z) side */
+   np[1]=-0.35f; np[2]=n->transform.position.z+0.72f;
+   q=drawCube(q,viewScreen,np,vr,0.9f,0.35f,0.35f,(i&1)?45:65,(i&1)?30:42,(i&1)?28:35,tmp,xyz,rgbaq,&prim,&base);
    np[0]-=2.1f; np[1]=-5.2f; q=drawCube(q,viewScreen,np,vr,0.65f,2.5f,0.7f,45,65,115,tmp,xyz,rgbaq,&prim,&base);
    np[0]+=4.2f; q=drawCube(q,viewScreen,np,vr,0.65f,2.5f,0.7f,45,65,115,tmp,xyz,rgbaq,&prim,&base);
    np[0]-=2.1f; np[1]=-9.7f; np[2]-=0.4f;
@@ -446,9 +456,11 @@ static void render(void) {
    np[0]+=1.5f; q=drawCube(q,viewScreen,np,vr,0.7f,2.1f,0.8f,35,40,55,tmp,xyz,rgbaq,&prim,&base);
    np[0]=n->transform.position.x; np[1]=-0.1f; np[2]=n->transform.position.z;
    q=drawCube(q,viewScreen,np,vr,1.25f,0.45f,1.25f,35,28,24,tmp,xyz,rgbaq,&prim,&base);
-   np[1]=-1.2f; np[2]=n->transform.position.z-1.25f; np[0]-=0.35f;
-   q=drawCube(q,viewScreen,np,vr,0.16f,0.18f,0.12f,20,20,20,tmp,xyz,rgbaq,&prim,&base);
-   np[0]+=0.7f; q=drawCube(q,viewScreen,np,vr,0.16f,0.18f,0.12f,20,20,20,tmp,xyz,rgbaq,&prim,&base);
+   np[1]=-1.2f; np[2]=n->transform.position.z+1.30f; np[0]-=0.35f;
+   q=drawCube(q,viewScreen,np,vr,0.13f,0.14f,0.10f,18,18,18,tmp,xyz,rgbaq,&prim,&base);
+   np[0]+=0.7f; q=drawCube(q,viewScreen,np,vr,0.13f,0.14f,0.10f,18,18,18,tmp,xyz,rgbaq,&prim,&base);
+   np[0]-=0.35f; np[1]=-1.65f;
+   q=drawCube(q,viewScreen,np,vr,0.28f,0.10f,0.10f,105,55,48,tmp,xyz,rgbaq,&prim,&base);
   }
  }
  /* Render the drivable car when occupied; otherwise render the player. */
@@ -463,8 +475,8 @@ static void render(void) {
  /* Player avatar with layered clothes, head, hair and face details. */
  { VECTOR p={px,-2,pz,1},r={0,heading,0,1};
   q=drawCube(q,viewScreen,p,r,3.2f,7.0f,2.4f,190,35,42,tmp,xyz,rgbaq,&prim,&base);
-  p[1]=6.0f; q=drawCube(q,viewScreen,p,r,2.6f,2.6f,2.6f,220,175,140,tmp,xyz,rgbaq,&prim,&base);
-  p[0]=px-4.0f; p[1]=-1.5f; p[2]=pz; q=drawCube(q,viewScreen,p,r,1.0f,4.5f,1.0f,190,35,42,tmp,xyz,rgbaq,&prim,&base);
+  p[1]=5.65f; q=drawCube(q,viewScreen,p,r,2.6f,2.6f,2.6f,220,175,140,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px-4.0f; p[1]=-1.85f; p[2]=pz; q=drawCube(q,viewScreen,p,r,1.0f,4.5f,1.0f,190,35,42,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px+4.0f; q=drawCube(q,viewScreen,p,r,1.0f,4.5f,1.0f,190,35,42,tmp,xyz,rgbaq,&prim,&base);
   /* Extra layered jacket, shoulders, forearms, trousers and shoes. */
   p[0]=px; p[1]=1.2f; p[2]=pz-0.15f;
@@ -473,19 +485,19 @@ static void render(void) {
   q=drawCube(q,viewScreen,p,r,0.85f,2.0f,0.9f,205,145,115,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px+4.0f;
   q=drawCube(q,viewScreen,p,r,0.85f,2.0f,0.9f,205,145,115,tmp,xyz,rgbaq,&prim,&base);
-  p[0]=px-1.5f; p[1]=-9.0f; p[2]=pz;
+  p[0]=px-1.5f; p[1]=-9.35f; p[2]=pz;
   q=drawCube(q,viewScreen,p,r,1.1f,3.0f,1.2f,28,32,42,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px+1.5f;
   q=drawCube(q,viewScreen,p,r,1.1f,3.0f,1.2f,28,32,42,tmp,xyz,rgbaq,&prim,&base);
-  p[0]=px-1.5f; p[1]=-11.2f; p[2]=pz-0.35f;
+  p[0]=px-1.5f; p[1]=-11.55f; p[2]=pz-0.35f;
   q=drawCube(q,viewScreen,p,r,1.25f,0.75f,1.8f,18,20,25,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px+1.5f;
   q=drawCube(q,viewScreen,p,r,1.25f,0.75f,1.8f,18,20,25,tmp,xyz,rgbaq,&prim,&base);
-  p[0]=px; p[1]=8.0f; p[2]=pz; q=drawCube(q,viewScreen,p,r,2.65f,0.55f,2.65f,35,27,23,tmp,xyz,rgbaq,&prim,&base);
-  p[1]=6.0f; p[2]=pz-2.35f; p[0]=px-0.72f;
+  p[0]=px; p[1]=7.65f; p[2]=pz; q=drawCube(q,viewScreen,p,r,2.65f,0.55f,2.65f,35,27,23,tmp,xyz,rgbaq,&prim,&base);
+  p[1]=5.65f; p[2]=pz+2.35f; p[0]=px-0.72f;
   q=drawCube(q,viewScreen,p,r,0.22f,0.24f,0.16f,18,18,18,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px+0.72f; q=drawCube(q,viewScreen,p,r,0.22f,0.24f,0.16f,18,18,18,tmp,xyz,rgbaq,&prim,&base);
-  p[0]=px; p[1]=5.35f; q=drawCube(q,viewScreen,p,r,0.18f,0.18f,0.16f,135,85,70,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px; p[1]=5.0f; q=drawCube(q,viewScreen,p,r,0.18f,0.18f,0.16f,135,85,70,tmp,xyz,rgbaq,&prim,&base);
  }
  }
  /* Full HUD: minimap bottom-left, health directly underneath. */

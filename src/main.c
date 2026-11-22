@@ -26,7 +26,7 @@ static zbuffer_t zbuf;
 static unsigned char padBuf[256] __attribute__((aligned(64)));
 static struct padButtonStatus pad;
 static int padReady=0, mission=0, logoFrames=0;
-static int padConnected=0;
+static int padConnected=0, padInitialized=0, padOpened=0;
 static NX_Scene nxScene;
 static NX_Camera nxCamera;
 static NX_Time nxClock;
@@ -108,7 +108,7 @@ static void showLogo(void) {
  q=drawText(q,213,185,5,"RED",235,45,55);
  q=drawText(q,315,185,5,"CITY",245,245,245);
  q=drawText(q,253,245,2,"NEXON GAMES",175,185,205);
- q=drawText(q,250,310,2,"PRESS START",220,220,225);
+ q=drawText(q,176,310,2,"A NEXON GAMES PRODUCTION",180,190,205);
  q=draw_finish(q);
  dma_wait_fast();
  dma_channel_send_normal(DMA_CHANNEL_GIF,p->data,q-p->data,0,0);
@@ -116,9 +116,15 @@ static void showLogo(void) {
 }
 static void initPad(void) {
  int i;
- if(padInit(0)!=1) { padConnected=0; return; }
- if(!padPortOpen(0,0,padBuf)) { padConnected=0; return; }
- padConnected=1;
+ if(!padInitialized) {
+  if(padInit(0)!=1) { padConnected=0; return; }
+  padInitialized=1;
+ }
+ if(!padOpened) {
+  if(!padPortOpen(0,0,padBuf)) { padConnected=0; return; }
+  padOpened=1;
+ }
+ padReady=0;
  for(i=0;i<120;i++) {
   int s=padGetState(0,0);
   if(s==PAD_STATE_STABLE) { padReady=1; padConnected=1; break; }
@@ -163,6 +169,7 @@ static void updateWorld(void) {
 }
 static void updatePad(void) {
  int s;
+ if(!padInitialized || !padOpened) { initPad(); return; }
  if(!padReady) {
   s=padGetState(0,0);
   if(s==PAD_STATE_STABLE) { padReady=1; padConnected=1; }

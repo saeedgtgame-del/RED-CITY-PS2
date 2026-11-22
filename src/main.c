@@ -219,8 +219,8 @@ static void updatePad(void) {
   if(padConnected && (rx>0.22f || rx< -0.22f)) cameraYaw-=rx*0.018f;
   if(padConnected && (ry>0.22f || ry< -0.22f)) {
    cameraPitch-=ry*0.007f;
-   if(cameraPitch<0.12f) cameraPitch=0.12f;
-   if(cameraPitch>0.42f) cameraPitch=0.42f;
+   if(cameraPitch<0.08f) cameraPitch=0.08f;
+   if(cameraPitch>1.35f) cameraPitch=1.35f;
   }
   if(padConnected && !(pad.btns & PAD_L1)) cameraYaw-=0.022f;
   if(padConnected && !(pad.btns & PAD_R1)) cameraYaw+=0.022f;
@@ -248,9 +248,9 @@ static void updatePad(void) {
     car->velocity.x=sinf(carHeading)*carSpeed; car->velocity.z=-cosf(carHeading)*carSpeed;
     car->transform.position.x+=car->velocity.x/60.0f; car->transform.position.z+=car->velocity.z/60.0f;
     if(!(pad.btns & PAD_SQUARE)) carSpeed*=0.90f;
-    if(car->transform.position.x < -32.0f) { car->transform.position.x=-32.0f; carSpeed*=0.55f; }
-    if(car->transform.position.x > 32.0f) { car->transform.position.x=32.0f; carSpeed*=0.55f; }
-    if(car->transform.position.z < -420.0f) car->transform.position.z=-420.0f;
+    if(car->transform.position.x < -52.0f) { car->transform.position.x=-52.0f; carSpeed*=0.55f; }
+    if(car->transform.position.x > 52.0f) { car->transform.position.x=52.0f; carSpeed*=0.55f; }
+    if(car->transform.position.z < -900.0f) car->transform.position.z=-900.0f;
     if(car->transform.position.z > 20.0f) car->transform.position.z=20.0f;
     px=car->transform.position.x; pz=car->transform.position.z; heading=carHeading;
   } else {
@@ -279,9 +279,9 @@ static void updatePad(void) {
     }
     nx_update_player(&nxScene,&in,1.0f/60.0f);
     if(!(pad.btns & PAD_CIRCLE)) { player->transform.position.x=-29.0f; player->transform.position.z=0.0f; player->transform.rotation.y=0.0f; cameraYaw=0.0f; cameraPitch=0.30f; mission=0; }
-    if(player->transform.position.x < -32.0f) player->transform.position.x=-32.0f;
-    if(player->transform.position.x > 32.0f) player->transform.position.x=32.0f;
-    if(player->transform.position.z < -420.0f) player->transform.position.z=-420.0f;
+    if(player->transform.position.x < -52.0f) player->transform.position.x=-52.0f;
+    if(player->transform.position.x > 52.0f) player->transform.position.x=52.0f;
+    if(player->transform.position.z < -900.0f) player->transform.position.z=-900.0f;
     if(player->transform.position.z > 20.0f) player->transform.position.z=20.0f;
     px=player->transform.position.x; pz=player->transform.position.z; heading=player->transform.rotation.y;
   }
@@ -364,8 +364,8 @@ static void render(void) {
    p[0]=-33.0f; q=drawCube(q,viewScreen,p,r,0.35f,0.18f,7.0f,230,190,45,tmp,xyz,rgbaq,&prim,&base);
    p[0]=33.0f; q=drawCube(q,viewScreen,p,r,0.35f,0.18f,7.0f,230,190,45,tmp,xyz,rgbaq,&prim,&base);
  }
- for(i=0;i<10;i++) {
-  VECTOR p1={-48,0,-25.0f-i*42.0f,1},p2={48,0,-25.0f-i*42.0f,1},r={0,0,0,1};
+ for(i=0;i<20;i++) {
+  VECTOR p1={-68,0,-25.0f-i*42.0f,1},p2={68,0,-25.0f-i*42.0f,1},r={0,0,0,1};
   q=drawCube(q,viewScreen,p1,r,12,18+(i%3)*4,12,120,78,62,tmp,xyz,rgbaq,&prim,&base);
   q=drawCube(q,viewScreen,p2,r,12,22+(i%2)*5,12,75,91,112,tmp,xyz,rgbaq,&prim,&base);
   /* bright window panels on the street-facing walls */
@@ -386,21 +386,21 @@ static void render(void) {
   q=drawCube(q,viewScreen,p2,r,0.38f,2.5f,2.8f,175,195,205,tmp,xyz,rgbaq,&prim,&base);
  }
  /* shopfront doors and simple street trees add scale and depth */
- for(i=0;i<10;i++) {
-  VECTOR d={-35.2f,-6.0f,-25.0f-i*42.0f,1},r={0,0,0,1};
+ for(i=0;i<20;i++) {
+  VECTOR d={-55.2f,-6.0f,-25.0f-i*42.0f,1},r={0,0,0,1};
   q=drawCube(q,viewScreen,d,r,0.4f,4.0f,2.5f,65,43,32,tmp,xyz,rgbaq,&prim,&base);
   d[0]=55.2f; q=drawCube(q,viewScreen,d,r,0.4f,4.0f,2.5f,55,58,65,tmp,xyz,rgbaq,&prim,&base);
  }
- for(i=0;i<9;i++) {
-  VECTOR t={-40.0f,-6.5f,-38.0f-i*48.0f,1},r={0,0,0,1};
+ for(i=0;i<18;i++) {
+  VECTOR t={-58.0f,-6.5f,-38.0f-i*48.0f,1},r={0,0,0,1};
   q=drawCube(q,viewScreen,t,r,1.0f,5.5f,1.0f,95,65,42,tmp,xyz,rgbaq,&prim,&base);
   t[1]=1.0f; q=drawCube(q,viewScreen,t,r,4.0f,4.0f,4.0f,42,105,62,tmp,xyz,rgbaq,&prim,&base);
   t[0]=58.0f; t[1]=-6.5f; q=drawCube(q,viewScreen,t,r,1.0f,5.5f,1.0f,95,65,42,tmp,xyz,rgbaq,&prim,&base);
   t[1]=1.0f; q=drawCube(q,viewScreen,t,r,4.0f,4.0f,4.0f,42,105,62,tmp,xyz,rgbaq,&prim,&base);
  }
  /* street lamps: poles and warm lamp heads */
- for(i=0;i<10;i++) {
-  VECTOR lp={-31.0f,-1.0f,-18.0f-i*48.0f,1},lr={0,0,0,1};
+ for(i=0;i<20;i++) {
+  VECTOR lp={-49.0f,-1.0f,-18.0f-i*48.0f,1},lr={0,0,0,1};
   q=drawCube(q,viewScreen,lp,lr,0.65f,10.0f,0.65f,35,38,43,tmp,xyz,rgbaq,&prim,&base);
   lp[0]=49.0f; q=drawCube(q,viewScreen,lp,lr,0.65f,10.0f,0.65f,35,38,43,tmp,xyz,rgbaq,&prim,&base);
   lp[1]=10.0f; q=drawCube(q,viewScreen,lp,lr,2.0f,0.8f,1.0f,255,205,115,tmp,xyz,rgbaq,&prim,&base);

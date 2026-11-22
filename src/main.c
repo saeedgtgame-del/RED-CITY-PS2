@@ -26,6 +26,7 @@ static zbuffer_t zbuf;
 static unsigned char padBuf[256] __attribute__((aligned(64)));
 static struct padButtonStatus pad;
 static int padReady=0, mission=0, logoFrames=0;
+static int padConnected=0;
 static NX_Scene nxScene;
 static NX_Camera nxCamera;
 static NX_Time nxClock;
@@ -80,12 +81,13 @@ static void showLogo(void) {
 }
 static void initPad(void) {
  int i;
- if(padInit(0)!=1) return;
- if(!padPortOpen(0,0,padBuf)) return;
+ if(padInit(0)!=1) { padConnected=0; return; }
+ if(!padPortOpen(0,0,padBuf)) { padConnected=0; return; }
+ padConnected=1;
  for(i=0;i<120;i++) {
   int s=padGetState(0,0);
-  if(s==PAD_STATE_STABLE) { padReady=1; break; }
-  if(s==PAD_STATE_DISCONN) break;
+  if(s==PAD_STATE_STABLE) { padReady=1; padConnected=1; break; }
+  if(s==PAD_STATE_DISCONN) { padConnected=0; break; }
   graph_wait_vsync();
  }
 }
@@ -128,11 +130,11 @@ static void updatePad(void) {
  int s;
  if(!padReady) {
   s=padGetState(0,0);
-  if(s==PAD_STATE_STABLE) padReady=1;
+  if(s==PAD_STATE_STABLE) { padReady=1; padConnected=1; }
   return;
  }
  s=padGetState(0,0);
- if(s!=PAD_STATE_STABLE) { padReady=0; return; }
+ if(s!=PAD_STATE_STABLE) { padReady=0; padConnected=0; return; }
  if(!padRead(0,0,&pad)) return;
  /* libpad bits are active-low. Movement now runs through NEXON ENGINE. */
  {
@@ -170,9 +172,10 @@ static qword_t *drawCube(qword_t *q, MATRIX viewScreen, VECTOR pos, VECTOR rot,
  MATRIX lw,wv,ls; int i;
  VECTOR scaled[24]; int k;
  for(k=0;k<vertex_count;k++) {
-  scaled[k][0]=vertices[k][0]*sx;
-  scaled[k][1]=vertices[k][1]*sy;
-  scaled[k][2]=vertices[k][2]*sz;
+  /* mesh vertices are authored at +/-10 units; convert requested half-extents. */
+  scaled[k][0]=vertices[k][0]*(sx*0.1f);
+  scaled[k][1]=vertices[k][1]*(sy*0.1f);
+  scaled[k][2]=vertices[k][2]*(sz*0.1f);
   scaled[k][3]=vertices[k][3];
  }
  create_local_world(lw,pos,rot);
@@ -275,6 +278,7 @@ static void render(void) {
  }
  /* clear navigation HUD: mission target, mini-map and controller guide */
  q=rect(q,12,12,250,34,10,15,24);
+ q=rect(q,20,20,12,18,padConnected?45:220,padConnected?220:45,55);
  q=rect(q,20,20,12,18,245,185,35);
  q=rect(q,40,18,150,5,235,235,235);
  q=rect(q,40,29,205,5,90,190,220);

@@ -97,8 +97,10 @@ static void updatePad(void) {
  if(!(pad.btns & PAD_DOWN))  pz+=2.2f;
  if(!(pad.btns & PAD_L1)) heading-=0.035f;
  if(!(pad.btns & PAD_R1)) heading+=0.035f;
- if(px < -28) px=-28; if(px>28) px=28;
- if(pz < -180) pz=-180; if(pz>20) pz=20;
+ if(px < -28) px=-28;
+ if(px > 28) px=28;
+ if(pz < -180) pz=-180;
+ if(pz > 20) pz=20;
  if(!(pad.btns & PAD_CROSS)) { mission=(mission+1)%10; }
 }
 
@@ -107,13 +109,17 @@ static qword_t *drawCube(qword_t *q, MATRIX viewScreen, VECTOR pos, VECTOR rot,
                      VECTOR *tmp, xyz_t *xyz, color_t *rgbaq,
                      prim_t *prim,color_t *base) {
  MATRIX lw,wv,ls; int i;
- VECTOR scale={sx,sy,sz,1.0f};
+ VECTOR scaled[24]; int k;
+ for(k=0;k<vertex_count;k++) {
+  scaled[k][0]=vertices[k][0]*sx;
+  scaled[k][1]=vertices[k][1]*sy;
+  scaled[k][2]=vertices[k][2]*sz;
+  scaled[k][3]=vertices[k][3];
+ }
  create_local_world(lw,pos,rot);
- /* Scale the object's local matrix columns. */
- { int r; for(r=0;r<4;r++){ lw[r][0]*=sx; lw[r][1]*=sy; lw[r][2]*=sz; } }
  create_world_view(wv,cameraPos,cameraRot);
  create_local_screen(ls,lw,wv,viewScreen);
- calculate_vertices(tmp,vertex_count,vertices,ls);
+ calculate_vertices(tmp,vertex_count,scaled,ls);
  draw_convert_xyz(xyz,2048,2048,32,vertex_count,(vertex_f_t*)tmp);
  { color_f_t c[24]; for(i=0;i<24;i++){ c[i].r=cr/255.0f; c[i].g=cg/255.0f; c[i].b=cb/255.0f; c[i].a=1.0f; } 
    draw_convert_rgbq(rgbaq,vertex_count,(vertex_f_t*)tmp,c,0x80); }
@@ -138,8 +144,8 @@ static void render(void) {
   base.r=128;base.g=128;base.b=128;base.a=128;base.q=1.0f;
   create_view_screen(viewScreen,graph_aspect_ratio(),-3.0f,3.0f,-2.2f,2.2f,1.0f,2000.0f);
  }
- cameraPos.x=px; cameraPos.y=30.0f; cameraPos.z=pz+105.0f;
- cameraRot.x=0.10f; cameraRot.y=0.0f; cameraRot.z=0.0f;
+ cameraPos[0]=px; cameraPos[1]=30.0f; cameraPos[2]=pz+105.0f;
+ cameraRot[0]=0.10f; cameraRot[1]=0.0f; cameraRot[2]=0.0f;
  tag=packets[ctx]->data; q=tag+1;
  q=draw_disable_tests(q,0,&zbuf);
  q=draw_clear(q,0,2048-SW/2,2048-SH/2,SW,SH,90,135,165);
@@ -154,7 +160,7 @@ static void render(void) {
  /* Player avatar is a 3D block character; camera follows from behind */
  { VECTOR p={px,-2,pz,1},r={0,heading,0,1};
   q=drawCube(q,viewScreen,p,r,3.2f,7.0f,2.4f,190,35,42,tmp,xyz,rgbaq,&prim,&base);
-  p.y=6.0f; q=drawCube(q,viewScreen,p,r,2.6f,2.6f,2.6f,220,175,140,tmp,xyz,rgbaq,&prim,&base);
+  p[1]=6.0f; q=drawCube(q,viewScreen,p,r,2.6f,2.6f,2.6f,220,175,140,tmp,xyz,rgbaq,&prim,&base);
  }
  /* Simple HUD bars, safely inside frame */
  q=rect(q,12,12,210,8,12,15,22);

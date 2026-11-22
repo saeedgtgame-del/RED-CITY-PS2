@@ -255,7 +255,7 @@ static void render(void) {
  static prim_t prim; static color_t base; static MATRIX viewScreen;
  qword_t *q,*tag; int i;
  if(!packets[0]) {
-  packets[0]=packet_init(8192,PACKET_NORMAL); packets[1]=packet_init(4096,PACKET_NORMAL);
+  packets[0]=packet_init(12288,PACKET_NORMAL); packets[1]=packet_init(12288,PACKET_NORMAL);
   tmp=memalign(128,sizeof(VECTOR)*vertex_count); xyz=memalign(128,sizeof(xyz_t)*vertex_count);
   rgbaq=memalign(128,sizeof(color_t)*vertex_count);
   prim.type=PRIM_TRIANGLE; prim.shading=PRIM_SHADE_GOURAUD; prim.mapping=DRAW_DISABLE;
@@ -280,6 +280,11 @@ static void render(void) {
    p[0]=-40; p[1]=-11; q=drawCube(q,viewScreen,p,r,5,1,130,105,105,110,tmp,xyz,rgbaq,&prim,&base);
    p[0]=40; q=drawCube(q,viewScreen,p,r,5,1,130,105,105,110,tmp,xyz,rgbaq,&prim,&base);
  }
+ /* raised sidewalks and curbs make the road read as a real street */
+ { VECTOR p={-39.0f,-11.6f,-75.0f,1},r={0,0,0,1};
+   q=drawCube(q,viewScreen,p,r,4.0f,0.7f,130.0f,125,125,118,tmp,xyz,rgbaq,&prim,&base);
+   p[0]=39.0f; q=drawCube(q,viewScreen,p,r,4.0f,0.7f,130.0f,125,125,118,tmp,xyz,rgbaq,&prim,&base);
+ }
  /* broken white centre line and road-edge paint */
  for(i=0;i<12;i++) {
    VECTOR p={0,-11.5f,-8.0f-i*19.0f,1},r={0,0,0,1};
@@ -298,6 +303,19 @@ static void render(void) {
   p2[0]=35.2f; p2[1]=5.0f; p2[2]=-25.0f-i*42.0f;
   q=drawCube(q,viewScreen,p2,r,0.35f,3.5f,3.5f,120,190,225,tmp,xyz,rgbaq,&prim,&base);
   p2[2]-=11.0f; q=drawCube(q,viewScreen,p2,r,0.35f,3.5f,3.5f,120,190,225,tmp,xyz,rgbaq,&prim,&base);
+ }
+ /* shopfront doors and simple street trees add scale and depth */
+ for(i=0;i<6;i++) {
+  VECTOR d={-35.2f,-6.0f,-25.0f-i*42.0f,1},r={0,0,0,1};
+  q=drawCube(q,viewScreen,d,r,0.4f,4.0f,2.5f,65,43,32,tmp,xyz,rgbaq,&prim,&base);
+  d[0]=35.2f; q=drawCube(q,viewScreen,d,r,0.4f,4.0f,2.5f,55,58,65,tmp,xyz,rgbaq,&prim,&base);
+ }
+ for(i=0;i<4;i++) {
+  VECTOR t={-40.0f,-6.5f,-38.0f-i*48.0f,1},r={0,0,0,1};
+  q=drawCube(q,viewScreen,t,r,1.0f,5.5f,1.0f,95,65,42,tmp,xyz,rgbaq,&prim,&base);
+  t[1]=1.0f; q=drawCube(q,viewScreen,t,r,4.0f,4.0f,4.0f,42,105,62,tmp,xyz,rgbaq,&prim,&base);
+  t[0]=40.0f; t[1]=-6.5f; q=drawCube(q,viewScreen,t,r,1.0f,5.5f,1.0f,95,65,42,tmp,xyz,rgbaq,&prim,&base);
+  t[1]=1.0f; q=drawCube(q,viewScreen,t,r,4.0f,4.0f,4.0f,42,105,62,tmp,xyz,rgbaq,&prim,&base);
  }
  /* street lamps: poles and warm lamp heads */
  for(i=0;i<5;i++) {
@@ -320,12 +338,27 @@ static void render(void) {
   q=drawCube(q,viewScreen,vp,vr,4.0f,1.8f,7.0f,(i&1)?175:35,(i&1)?35:95,(i&1)?35:165,tmp,xyz,rgbaq,&prim,&base);
   vp[1]=-2.8f;
   q=drawCube(q,viewScreen,vp,vr,3.0f,1.0f,3.8f,85,145,175,tmp,xyz,rgbaq,&prim,&base);
+  /* Four visible dark wheels and front headlights on each traffic car. */
+  { int wx,wz; for(wx=-1;wx<=1;wx+=2) for(wz=-1;wz<=1;wz+=2) {
+    VECTOR wheel={v->transform.position.x+wx*3.2f,-6.3f,v->transform.position.z+wz*4.6f,1};
+    q=drawCube(q,viewScreen,wheel,vr,0.8f,1.5f,1.1f,22,24,28,tmp,xyz,rgbaq,&prim,&base);
+   }
+   VECTOR lamp={v->transform.position.x-2.3f,-4.9f,v->transform.position.z-6.8f,1};
+   q=drawCube(q,viewScreen,lamp,vr,0.45f,0.45f,0.3f,255,225,145,tmp,xyz,rgbaq,&prim,&base);
+   lamp[0]=v->transform.position.x+2.3f;
+   q=drawCube(q,viewScreen,lamp,vr,0.45f,0.45f,0.3f,255,225,145,tmp,xyz,rgbaq,&prim,&base);
+  }
   {
    NX_Entity *n=&nxScene.entities[nxPedestrians[i]];
    VECTOR np={n->transform.position.x,-2.0f,n->transform.position.z,1};
    q=drawCube(q,viewScreen,np,vr,1.5f,4.0f,1.5f,65,95,155,tmp,xyz,rgbaq,&prim,&base);
    np[1]=2.8f;
    q=drawCube(q,viewScreen,np,vr,1.2f,1.2f,1.2f,205,165,130,tmp,xyz,rgbaq,&prim,&base);
+   np[0]-=2.1f; np[1]=-1.8f; q=drawCube(q,viewScreen,np,vr,0.65f,3.0f,0.7f,45,65,115,tmp,xyz,rgbaq,&prim,&base);
+   np[0]+=4.2f; q=drawCube(q,viewScreen,np,vr,0.65f,3.0f,0.7f,45,65,115,tmp,xyz,rgbaq,&prim,&base);
+   np[0]-=2.1f; np[1]=-5.0f; np[2]-=0.4f;
+   q=drawCube(q,viewScreen,np,vr,0.7f,2.5f,0.8f,35,40,55,tmp,xyz,rgbaq,&prim,&base);
+   np[0]+=1.5f; q=drawCube(q,viewScreen,np,vr,0.7f,2.5f,0.8f,35,40,55,tmp,xyz,rgbaq,&prim,&base);
   }
  }
  /* Player avatar is a 3D block character; camera follows from behind */

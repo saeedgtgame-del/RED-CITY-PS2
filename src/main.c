@@ -18,7 +18,7 @@
 #include "nexon_engine.h"
 
 #define SW 640
-#define SH 448
+#define SH 512
 #define OBJECTS 15
 
 static framebuffer_t frame;
@@ -26,7 +26,7 @@ static zbuffer_t zbuf;
 static unsigned char padBuf[256] __attribute__((aligned(64)));
 static struct padButtonStatus pad;
 static int padReady=0, mission=0, logoFrames=0;
-static int padConnected=0, padInitialized=0, padOpened=0;
+static int padConnected=0, padInitialized=0, padOpened=0, padPort=0;
 static int inCar=0, mapVisible=0, playerVehicle=-1;
 static int lastTriangle=0, lastStart=0;
 static float carSpeed=0.0f, carHeading=0.0f;
@@ -108,8 +108,7 @@ static void showLogo(void) {
  q=rect(q,198,274,244,3,115,20,30);
  q=rect(q,205,151,5,120,225,28,43);
  q=rect(q,430,151,5,120,225,28,43);
- q=drawText(q,213,185,5,"RED",235,45,55);
- q=drawText(q,315,185,5,"CITY",245,245,245);
+ q=drawText(q,205,190,5,"RED CITY",245,245,245);
  q=drawText(q,253,245,2,"NEXON GAMES",175,185,205);
  q=drawText(q,176,310,2,"A NEXON GAMES PRODUCTION",180,190,205);
  q=draw_finish(q);
@@ -118,21 +117,28 @@ static void showLogo(void) {
  draw_wait_finish(); graph_wait_vsync(); packet_free(p);
 }
 static void initPad(void) {
- int i;
+ int i,port;
  if(!padInitialized) {
   if(padInit(0)!=1) { padConnected=0; return; }
   padInitialized=1;
  }
  if(!padOpened) {
-  if(!padPortOpen(0,0,padBuf)) { padConnected=0; return; }
-  padOpened=1;
-  /* Explicitly enable DualShock analog sticks; some pads boot in digital mode. */
-  padSetMainMode(0,0,PAD_MMODE_DUALSHOCK,PAD_MMODE_LOCK);
-  for(i=0;i<30 && padGetReqState(0,0)==PAD_RSTAT_BUSY;i++) graph_wait_vsync();
+  /* Try both physical controller ports instead of assuming port 1. */
+  for(port=0;port<2;port++) {
+   if(padPortOpen(port,0,padBuf)) {
+    padPort=port;
+    padOpened=1;
+    break;
+   }
+  }
+  if(!padOpened) { padConnected=0; return; }
+  /* Explicitly enable DualShock analog sticks. */
+  padSetMainMode(padPort,0,PAD_MMODE_DUALSHOCK,PAD_MMODE_LOCK);
+  for(i=0;i<30 && padGetReqState(padPort,0)==PAD_RSTAT_BUSY;i++) graph_wait_vsync();
  }
  padReady=0;
  for(i=0;i<120;i++) {
-  int s=padGetState(0,0);
+  int s=padGetState(padPort,0);
   if(s==PAD_STATE_STABLE) { padReady=1; padConnected=1; break; }
   if(s==PAD_STATE_DISCONN) { padConnected=0; break; }
   graph_wait_vsync();
@@ -178,13 +184,13 @@ static void updatePad(void) {
  int s;
  if(!padInitialized || !padOpened) { initPad(); return; }
  if(!padReady) {
-  s=padGetState(0,0);
+  s=padGetState(padPort,0);
   if(s==PAD_STATE_STABLE) { padReady=1; padConnected=1; }
   else { padConnected=0; return; }
  }
- s=padGetState(0,0);
+ s=padGetState(padPort,0);
  if(s!=PAD_STATE_STABLE) { padReady=0; padConnected=0; return; }
- if(!padRead(0,0,&pad)) return;
+ if(!padRead(padPort,0,&pad)) return;
  {
   NX_Input in;
   NX_Entity *player=&nxScene.entities[nxPlayer];

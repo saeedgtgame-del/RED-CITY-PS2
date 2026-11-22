@@ -361,8 +361,8 @@ static void render(void) {
  { VECTOR p={0,-13,-205,1},r={0,0,0,1};
    q=drawCube(q,viewScreen,p,r,44,1,925,58,61,67,tmp,xyz,rgbaq,&prim,&base);
    /* Subtle asphalt repair strips and aggregate bands break up the flat slab. */
-   for(i=0;i<16;i++) {
-     VECTOR patch={-27.0f+(float)((i*17)%55),-11.78f,-14.0f-(float)i*24.0f,1};
+   for(i=0;i<40;i++) {
+     VECTOR patch={-27.0f+(float)((i*17)%55),-11.78f,-14.0f-(float)i*23.0f,1};
      q=drawCube(q,viewScreen,patch,r,1.2f+(float)(i%3)*0.45f,0.08f,3.0f+(float)(i%2)*1.5f,
                 (i&1)?66:51,(i&1)?69:55,(i&1)?75:61,tmp,xyz,rgbaq,&prim,&base);
    }
@@ -401,6 +401,16 @@ static void render(void) {
   q=drawCube(q,viewScreen,p2,r,0.38f,2.5f,2.8f,175,195,205,tmp,xyz,rgbaq,&prim,&base);
   p2[2]-=12.0f;
   q=drawCube(q,viewScreen,p2,r,0.38f,2.5f,2.8f,175,195,205,tmp,xyz,rgbaq,&prim,&base);
+  /* Facade cornices, balcony slabs and railings for a less boxy skyline. */
+  { VECTOR trim={-68.0f,19.0f,-25.0f-i*42.0f,1};
+    q=drawCube(q,viewScreen,trim,r,12.8f,0.55f,12.8f,145,132,115,tmp,xyz,rgbaq,&prim,&base);
+    trim[0]=68.0f; q=drawCube(q,viewScreen,trim,r,12.8f,0.55f,12.8f,112,126,139,tmp,xyz,rgbaq,&prim,&base);
+    trim[1]=3.0f; trim[2]=-25.0f-i*42.0f-5.0f;
+    q=drawCube(q,viewScreen,trim,r,3.0f,0.28f,0.45f,75,82,88,tmp,xyz,rgbaq,&prim,&base);
+    trim[1]=5.0f; q=drawCube(q,viewScreen,trim,r,3.0f,0.22f,0.22f,185,190,185,tmp,xyz,rgbaq,&prim,&base);
+    trim[0]=-68.0f; q=drawCube(q,viewScreen,trim,r,3.0f,0.28f,0.45f,75,82,88,tmp,xyz,rgbaq,&prim,&base);
+    trim[1]=5.0f; q=drawCube(q,viewScreen,trim,r,3.0f,0.22f,0.22f,185,190,185,tmp,xyz,rgbaq,&prim,&base);
+  }
  }
  /* shopfront doors and simple street trees add scale and depth */
  for(i=0;i<20;i++) {
@@ -446,6 +456,20 @@ static void render(void) {
   q=drawCube(q,viewScreen,vp,vr,4.0f,1.8f,7.0f,(i&1)?175:35,(i&1)?35:95,(i&1)?35:165,tmp,xyz,rgbaq,&prim,&base);
   vp[1]=-7.9f;
   q=drawCube(q,viewScreen,vp,vr,3.0f,1.0f,3.8f,85,145,175,tmp,xyz,rgbaq,&prim,&base);
+  /* Roof, front/rear glass, bumpers and grille give each vehicle a silhouette. */
+  { VECTOR detail={v->transform.position.x,-6.95f,v->transform.position.z,1};
+    q=drawCube(q,viewScreen,detail,vr,2.5f,0.35f,2.8f,45,68,82,tmp,xyz,rgbaq,&prim,&base);
+    detail[1]=-8.0f; detail[2]=v->transform.position.z-3.65f;
+    q=drawCube(q,viewScreen,detail,vr,2.45f,0.7f,0.25f,115,175,195,tmp,xyz,rgbaq,&prim,&base);
+    detail[2]=v->transform.position.z+3.65f;
+    q=drawCube(q,viewScreen,detail,vr,2.45f,0.7f,0.25f,55,85,105,tmp,xyz,rgbaq,&prim,&base);
+    detail[1]=-10.4f; detail[2]=v->transform.position.z-7.15f;
+    q=drawCube(q,viewScreen,detail,vr,3.6f,0.45f,0.35f,48,50,55,tmp,xyz,rgbaq,&prim,&base);
+    detail[2]=v->transform.position.z+7.15f;
+    q=drawCube(q,viewScreen,detail,vr,3.6f,0.45f,0.35f,48,50,55,tmp,xyz,rgbaq,&prim,&base);
+    detail[1]=-9.9f; detail[2]=v->transform.position.z-7.28f;
+    q=drawCube(q,viewScreen,detail,vr,1.1f,0.3f,0.18f,45,45,48,tmp,xyz,rgbaq,&prim,&base);
+  }
   /* Four visible dark wheels and front headlights on each traffic car. */
   { int wx,wz; for(wx=-1;wx<=1;wx+=2) for(wz=-1;wz<=1;wz+=2) {
     VECTOR wheel={v->transform.position.x+wx*3.2f,-11.35f,v->transform.position.z+wz*4.6f,1};
@@ -487,6 +511,15 @@ static void render(void) {
   cp[1]=-10.1f;
   q=drawCube(q,viewScreen,cp,cr,4.8f,1.7f,8.0f,155,28,42,tmp,xyz,rgbaq,&prim,&base);
   cp[1]=-7.9f; q=drawCube(q,viewScreen,cp,cr,3.5f,1.25f,3.8f,55,115,145,tmp,xyz,rgbaq,&prim,&base);
+  { VECTOR d={car->transform.position.x,-6.6f,car->transform.position.z,1};
+    q=drawCube(q,viewScreen,d,cr,2.8f,0.35f,3.1f,45,65,78,tmp,xyz,rgbaq,&prim,&base);
+    d[1]=-8.0f; d[2]=car->transform.position.z-4.0f;
+    q=drawCube(q,viewScreen,d,cr,2.8f,0.7f,0.25f,115,175,195,tmp,xyz,rgbaq,&prim,&base);
+    d[2]=car->transform.position.z+4.0f;
+    q=drawCube(q,viewScreen,d,cr,2.8f,0.7f,0.25f,55,85,105,tmp,xyz,rgbaq,&prim,&base);
+    d[1]=-10.5f; d[2]=car->transform.position.z-8.0f;
+    q=drawCube(q,viewScreen,d,cr,4.2f,0.45f,0.35f,40,42,48,tmp,xyz,rgbaq,&prim,&base);
+  }
   { int wx,wz; for(wx=-1;wx<=1;wx+=2) for(wz=-1;wz<=1;wz+=2) { VECTOR wh={car->transform.position.x+wx*4.1f,-11.35f,car->transform.position.z+wz*5.2f,1}; q=drawCube(q,viewScreen,wh,cr,0.8f,1.8f,1.2f,18,20,24,tmp,xyz,rgbaq,&prim,&base); } }
  } else {
  /* Player avatar with layered clothes, head, hair and face details. */

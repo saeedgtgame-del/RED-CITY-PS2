@@ -101,7 +101,7 @@ static void updatePad(void) {
  if(px > 28) px=28;
  if(pz < -180) pz=-180;
  if(pz > 20) pz=20;
- if(!(pad.btns & PAD_CROSS)) { mission=(mission+1)%10; }
+ if(!(pad.btns & PAD_CIRCLE)) { px=0.0f; pz=12.0f; heading=0.0f; }
 }
 
 static qword_t *drawCube(qword_t *q, MATRIX viewScreen, VECTOR pos, VECTOR rot,
@@ -144,29 +144,79 @@ static void render(void) {
   base.r=128;base.g=128;base.b=128;base.a=128;base.q=1.0f;
   create_view_screen(viewScreen,graph_aspect_ratio(),-3.0f,3.0f,-2.2f,2.2f,1.0f,2000.0f);
  }
- cameraPos[0]=px; cameraPos[1]=30.0f; cameraPos[2]=pz+105.0f;
- cameraRot[0]=0.10f; cameraRot[1]=0.0f; cameraRot[2]=0.0f;
+ cameraPos[0]=px; cameraPos[1]=27.0f; cameraPos[2]=pz+92.0f;
+ cameraRot[0]=0.12f; cameraRot[1]=0.0f; cameraRot[2]=0.0f;
  tag=packets[ctx]->data; q=tag+1;
  q=draw_disable_tests(q,0,&zbuf);
  q=draw_clear(q,0,2048-SW/2,2048-SH/2,SW,SH,90,135,165);
  q=draw_enable_tests(q,0,&zbuf);
  /* road slab and city blocks form a small 3D street */
- { VECTOR p={0,-13,-75,1},r={0,0,0,1}; q=drawCube(q,viewScreen,p,r,35,1,125,45,48,54,tmp,xyz,rgbaq,&prim,&base); }
+ { VECTOR p={0,-13,-75,1},r={0,0,0,1};
+   q=drawCube(q,viewScreen,p,r,35,1,125,42,47,55,tmp,xyz,rgbaq,&prim,&base);
+   p[0]=-40; p[1]=-11; q=drawCube(q,viewScreen,p,r,5,1,130,105,105,110,tmp,xyz,rgbaq,&prim,&base);
+   p[0]=40; q=drawCube(q,viewScreen,p,r,5,1,130,105,105,110,tmp,xyz,rgbaq,&prim,&base);
+ }
+ /* broken white centre line and road-edge paint */
+ for(i=0;i<12;i++) {
+   VECTOR p={0,-11.5f,-8.0f-i*19.0f,1},r={0,0,0,1};
+   q=drawCube(q,viewScreen,p,r,0.45f,0.18f,6.0f,235,225,190,tmp,xyz,rgbaq,&prim,&base);
+   p[0]=-33.0f; q=drawCube(q,viewScreen,p,r,0.35f,0.18f,7.0f,230,190,45,tmp,xyz,rgbaq,&prim,&base);
+   p[0]=33.0f; q=drawCube(q,viewScreen,p,r,0.35f,0.18f,7.0f,230,190,45,tmp,xyz,rgbaq,&prim,&base);
+ }
  for(i=0;i<6;i++) {
   VECTOR p1={-48,0,-25.0f-i*42.0f,1},p2={48,0,-25.0f-i*42.0f,1},r={0,0,0,1};
   q=drawCube(q,viewScreen,p1,r,12,18+(i%3)*4,12,120,78,62,tmp,xyz,rgbaq,&prim,&base);
   q=drawCube(q,viewScreen,p2,r,12,22+(i%2)*5,12,75,91,112,tmp,xyz,rgbaq,&prim,&base);
+  /* bright window panels on the street-facing walls */
+  p1[0]=-35.2f; p1[1]=4.0f; p1[2]=-25.0f-i*42.0f;
+  q=drawCube(q,viewScreen,p1,r,0.35f,3.0f,3.5f,245,185,95,tmp,xyz,rgbaq,&prim,&base);
+  p1[2]-=11.0f; q=drawCube(q,viewScreen,p1,r,0.35f,3.0f,3.5f,245,185,95,tmp,xyz,rgbaq,&prim,&base);
+  p2[0]=35.2f; p2[1]=5.0f; p2[2]=-25.0f-i*42.0f;
+  q=drawCube(q,viewScreen,p2,r,0.35f,3.5f,3.5f,120,190,225,tmp,xyz,rgbaq,&prim,&base);
+  p2[2]-=11.0f; q=drawCube(q,viewScreen,p2,r,0.35f,3.5f,3.5f,120,190,225,tmp,xyz,rgbaq,&prim,&base);
+ }
+ /* street lamps: poles and warm lamp heads */
+ for(i=0;i<5;i++) {
+  VECTOR lp={-31.0f,-1.0f,-18.0f-i*48.0f,1},lr={0,0,0,1};
+  q=drawCube(q,viewScreen,lp,lr,0.65f,10.0f,0.65f,35,38,43,tmp,xyz,rgbaq,&prim,&base);
+  lp[0]=31.0f; q=drawCube(q,viewScreen,lp,lr,0.65f,10.0f,0.65f,35,38,43,tmp,xyz,rgbaq,&prim,&base);
+  lp[1]=10.0f; q=drawCube(q,viewScreen,lp,lr,2.0f,0.8f,1.0f,255,205,115,tmp,xyz,rgbaq,&prim,&base);
+  lp[0]=-31.0f; q=drawCube(q,viewScreen,lp,lr,2.0f,0.8f,1.0f,255,205,115,tmp,xyz,rgbaq,&prim,&base);
+ }
+ /* Yellow destination beacon: follow the road ahead */
+ { VECTOR wp={0,8,-145,1},wr={0,0,0,1};
+   q=drawCube(q,viewScreen,wp,wr,1.2f,15.0f,1.2f,245,185,35,tmp,xyz,rgbaq,&prim,&base);
+   wp[1]=24.0f; q=drawCube(q,viewScreen,wp,wr,4.0f,1.0f,4.0f,255,220,75,tmp,xyz,rgbaq,&prim,&base);
  }
  /* Player avatar is a 3D block character; camera follows from behind */
  { VECTOR p={px,-2,pz,1},r={0,heading,0,1};
   q=drawCube(q,viewScreen,p,r,3.2f,7.0f,2.4f,190,35,42,tmp,xyz,rgbaq,&prim,&base);
   p[1]=6.0f; q=drawCube(q,viewScreen,p,r,2.6f,2.6f,2.6f,220,175,140,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px-4.0f; p[1]=-1.5f; p[2]=pz; q=drawCube(q,viewScreen,p,r,1.0f,4.5f,1.0f,190,35,42,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px+4.0f; q=drawCube(q,viewScreen,p,r,1.0f,4.5f,1.0f,190,35,42,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px-1.5f; p[1]=-8.0f; q=drawCube(q,viewScreen,p,r,1.1f,3.0f,1.2f,28,32,42,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px+1.5f; q=drawCube(q,viewScreen,p,r,1.1f,3.0f,1.2f,28,32,42,tmp,xyz,rgbaq,&prim,&base);
  }
- /* Simple HUD bars, safely inside frame */
- q=rect(q,12,12,210,8,12,15,22);
- q=rect(q,12,12,(mission+1)*20,8,220,35,42);
- q=rect(q,SW-150,12,138,8,12,15,22);
- q=rect(q,SW-150,12,mission*13,8,45,210,110);
+ /* clear navigation HUD: mission target, mini-map and controller guide */
+ q=rect(q,12,12,250,34,10,15,24);
+ q=rect(q,20,20,12,18,245,185,35);
+ q=rect(q,40,18,150,5,235,235,235);
+ q=rect(q,40,29,205,5,90,190,220);
+ q=rect(q,SW-116,12,104,104,10,15,24);
+ q=rect(q,SW-108,20,88,88,55,63,70);
+ q=rect(q,SW-106,59,84,3,225,215,185);
+ q=rect(q,SW-66,24,3,80,225,215,185);
+ q=rect(q,SW-66+(int)(px*0.7f),64+(int)(pz*0.18f),9,9,245,45,45);
+ q=rect(q,SW-70,27,11,11,255,205,55);
+ q=rect(q,12,SH-46,275,34,10,15,24);
+ q=rect(q,22,SH-36,20,4,245,245,245);
+ q=rect(q,30,SH-41,4,14,245,245,245);
+ q=rect(q,62,SH-36,20,4,245,245,245);
+ q=rect(q,70,SH-41,4,14,245,245,245);
+ q=rect(q,105,SH-36,14,4,80,210,120);
+ q=rect(q,110,SH-41,4,14,80,210,120);
+ q=rect(q,145,SH-36,14,4,230,75,75);
+ q=rect(q,150,SH-41,4,14,230,75,75);
  q=draw_finish(q);
  DMATAG_END(tag,(q-tag)-1,0,0,0);
  dma_wait_fast(); dma_channel_send_chain(DMA_CHANNEL_GIF,tag,q-tag,0,0);

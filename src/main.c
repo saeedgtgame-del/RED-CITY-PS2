@@ -34,6 +34,9 @@ static NX_Scene nxScene;
 static NX_Camera nxCamera;
 static NX_Time nxClock;
 static int nxPlayer=-1;
+static float gameMinute=480.0f, weatherTimer=0.0f, windStrength=0.18f, windTarget=0.18f, gustTimer=0.0f, dustPhase=0.0f;
+static unsigned int weatherSeed=0x51A7u;
+static int weatherType=0;
 static int nxTraffic[4];
 static int nxPedestrians[4];
 static const float missionTargets[10]={-70.0f,-145.0f,-220.0f,-295.0f,-370.0f,-445.0f,-520.0f,-595.0f,-670.0f,-745.0f};
@@ -163,10 +166,16 @@ static void initNexonGame(void) {
  }
  memset(&nxClock,0,sizeof(nxClock));
 }
+static unsigned int worldRand(void) { weatherSeed=weatherSeed*1664525u+1013904223u; return weatherSeed; }
 static void updateWorld(void) {
  int i;
  NX_Entity *e;
- nx_time_step(&nxClock,1.0f/60.0f);
+ const float dt=1.0f/60.0f;
+ nx_time_step(&nxClock,dt);
+ gameMinute+=24.0f*dt; while(gameMinute>=1440.0f) gameMinute-=1440.0f;
+ gustTimer-=dt; if(gustTimer<=0.0f) { windTarget=0.08f+(float)(worldRand()%1000u)/1000.0f*1.45f; gustTimer=5.0f+(float)(worldRand()%1200u)/100.0f; }
+ windStrength+=(windTarget-windStrength)*0.008f; dustPhase+=dt*(1.0f+windStrength*4.0f);
+ weatherTimer+=dt; if(weatherTimer>600.0f+(float)(worldRand()%1200u)) { int n=(int)(worldRand()%5u); if(n==weatherType)n=(n+1+(int)(worldRand()%4u))%5; weatherType=n; weatherTimer=0.0f; }
  for(i=0;i<4;i++) {
   e=&nxScene.entities[nxTraffic[i]];
   e->transform.position.z+=e->velocity.z*nxClock.deltaTime;
@@ -286,7 +295,6 @@ static void updatePad(void) {
     px=player->transform.position.x; pz=player->transform.position.z; heading=player->transform.rotation.y;
   }
  }
- updateWorld();
 }
 
 static qword_t *drawCube(qword_t *q, MATRIX viewScreen, VECTOR pos, VECTOR rot,
@@ -576,8 +584,8 @@ static void render(void) {
   q=drawCube(q,viewScreen,p,r,1.25f,0.75f,1.8f,18,20,25,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px; p[1]=7.65f; p[2]=pz; q=drawCube(q,viewScreen,p,r,2.65f,0.55f,2.65f,35,27,23,tmp,xyz,rgbaq,&prim,&base);
   /* Long layered hair falling behind the head to shoulder level. */
-  p[1]=3.0f; p[2]=pz-1.8f; p[0]=px-1.9f; q=drawCube(q,viewScreen,p,r,0.8f,4.8f,0.8f,48,28,24,tmp,xyz,rgbaq,&prim,&base);
-  p[0]=px+1.9f; q=drawCube(q,viewScreen,p,r,0.8f,4.8f,0.8f,48,28,24,tmp,xyz,rgbaq,&prim,&base);
+  p[1]=3.0f; p[2]=pz-1.8f; p[0]=px-1.9f+sinf(nxClock.elapsed*5.2f)*windStrength*0.55f; q=drawCube(q,viewScreen,p,r,0.8f,4.8f,0.8f,48,28,24,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px+1.9f+sinf(nxClock.elapsed*5.2f+0.8f)*windStrength*0.55f; q=drawCube(q,viewScreen,p,r,0.8f,4.8f,0.8f,48,28,24,tmp,xyz,rgbaq,&prim,&base);
   p[1]=6.0f; p[2]=pz-1.7f; p[0]=px; q=drawCube(q,viewScreen,p,r,2.1f,1.0f,1.1f,48,28,24,tmp,xyz,rgbaq,&prim,&base);
   p[1]=5.65f; p[2]=pz+2.48f; p[0]=px-0.72f;
   q=drawCube(q,viewScreen,p,r,0.22f,0.24f,0.16f,18,18,18,tmp,xyz,rgbaq,&prim,&base);
@@ -606,7 +614,9 @@ static void render(void) {
  q=rect(q,12,12,250,34,10,15,24);
  q=rect(q,20,20,12,18,padConnected?45:220,padConnected?220:45,55);
  q=drawText(q,42,19,1,"RED CITY",235,235,240);
+ { int hh=(int)(gameMinute/60.0f),mm=(int)gameMinute%60; char tm[5]; tm[0]='0'+hh/10; tm[1]='0'+hh%10; tm[2]='0'+mm/10; tm[3]='0'+mm%10; tm[4]=0; q=drawText(q,42,SH-172,1,tm,245,235,180); }
  q=drawText(q,145,19,1,padConnected?"PAD OK":"NO PAD",padConnected?90:245,padConnected?225:85,padConnected?130:85);
+ { const char *w=weatherType==0?"CLEAR":weatherType==1?"CLOUDY":weatherType==2?"POLLUTED":weatherType==3?"RAIN":"SNOW"; q=drawText(q,SW-105,19,1,w,210,210,190); }
  q=rect(q,SW/2-118,12,236,34,10,15,24);
  if(mission<10) q=drawText(q,SW/2-108,19,1,"MISSION - REACH MARKER",245,210,105);
  else q=drawText(q,SW/2-65,19,1,"MISSION COMPLETE",100,235,140);
@@ -674,6 +684,6 @@ int main(void) {
  for(logoFrames=0;logoFrames<180;logoFrames++) showLogo();
  initNexonGame();
  initPad();
- for(;;) { updatePad(); render(); }
+ for(;;) { updateWorld(); updatePad(); render(); }
  return 0;
 }

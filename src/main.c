@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <malloc.h>
 #include <math.h>
+#include <string.h>
 #include <tamtypes.h>
 #include <math3d.h>
 #include <packet.h>
@@ -193,7 +194,7 @@ static void render(void) {
  static prim_t prim; static color_t base; static MATRIX viewScreen;
  qword_t *q,*tag; int i;
  if(!packets[0]) {
-  packets[0]=packet_init(4096,PACKET_NORMAL); packets[1]=packet_init(4096,PACKET_NORMAL);
+  packets[0]=packet_init(8192,PACKET_NORMAL); packets[1]=packet_init(4096,PACKET_NORMAL);
   tmp=memalign(128,sizeof(VECTOR)*vertex_count); xyz=memalign(128,sizeof(xyz_t)*vertex_count);
   rgbaq=memalign(128,sizeof(color_t)*vertex_count);
   prim.type=PRIM_TRIANGLE; prim.shading=PRIM_SHADE_GOURAUD; prim.mapping=DRAW_DISABLE;

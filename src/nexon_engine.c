@@ -55,7 +55,7 @@ void nx_update_player(NX_Scene *scene, const NX_Input *in, float dt) {
     if (!in || scene->player<0 || scene->player>=NX_MAX_ENTITIES) return;
     p=&scene->entities[scene->player];
     if (!p->active) return;
-    speed=(in->held & 1u) ? 12.0f : 8.0f;
+    speed=(in->held & 1u) ? 32.0f : 20.0f;
     dx=in->moveX; dz=in->moveZ;
     len=dx*dx+dz*dz;
     if (len>1.0f) {

@@ -67,8 +67,14 @@ void nx_update_player(NX_Scene *scene, const NX_Input *in, float dt) {
     {
         float sn=sinf(p->transform.rotation.y), cs=cosf(p->transform.rotation.y);
         float forward=-dz, right=dx;
-        p->velocity.x=(right*cs+forward*sn)*speed;
-        p->velocity.z=(right*sn-forward*cs)*speed;
+        float targetX=(right*cs+forward*sn)*speed;
+        float targetZ=(right*sn-forward*cs)*speed;
+        float response=(len>0.001f)?12.0f:18.0f;
+        float blend=dt*response;
+        if(blend>1.0f) blend=1.0f;
+        /* Acceleration and friction smooth movement instead of instant velocity changes. */
+        p->velocity.x+=(targetX-p->velocity.x)*blend;
+        p->velocity.z+=(targetZ-p->velocity.z)*blend;
     }
     p->transform.position.x += p->velocity.x*dt;
     p->transform.position.z += p->velocity.z*dt;

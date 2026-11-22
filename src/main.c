@@ -195,6 +195,8 @@ static void updatePad(void) {
   }
   if(!(pad.btns & PAD_L1)) cameraYaw-=0.035f;
   if(!(pad.btns & PAD_R1)) cameraYaw+=0.035f;
+  if(!(pad.btns & PAD_L2)) in.turn=-1.0f;
+  if(!(pad.btns & PAD_R2)) in.turn=1.0f;
   if(!(pad.btns & PAD_CROSS)) in.held=1; /* Cross = sprint */
   nx_update_player(&nxScene,&in,1.0f/60.0f);
   if(!(pad.btns & PAD_CIRCLE)) {

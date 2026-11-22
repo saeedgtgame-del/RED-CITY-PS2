@@ -1,7 +1,7 @@
 
 EE_BIN = RED_CITY.ELF
 
-EE_OBJS = src/main.o
+EE_OBJS = src/main.o src/nexon_engine.o
 
 EE_LIBS = -lpad -ldraw -lgraph -lmath3d -lpacket -ldma -ldebug
 

@@ -39,7 +39,7 @@ static unsigned int weatherSeed=0x51A7u;
 static int weatherType=0;
 static int nxTraffic[4];
 static int nxPedestrians[4];
-static const float missionTargets[10]={-70.0f,-145.0f,-220.0f,-295.0f,-370.0f,-445.0f,-520.0f,-595.0f,-670.0f,-745.0f};
+static const float missionTargets[30]={-70.0f,-145.0f,-220.0f,-295.0f,-370.0f,-445.0f,-520.0f,-595.0f,-670.0f,-745.0f,-820.0f,-895.0f,-970.0f,-1045.0f,-1120.0f,-1195.0f,-1270.0f,-1345.0f,-1420.0f,-1495.0f,-1570.0f,-1645.0f,-1720.0f,-1795.0f,-1870.0f,-1945.0f,-2020.0f,-2095.0f,-2170.0f,-2245.0f};
 static float px=0.0f, pz=0.0f, heading=0.0f;
 static float cameraYaw=0.0f, cameraPitch=0.30f, cameraDistance=32.0f;
 static VECTOR cameraPos={0.0f,28.0f,100.0f,1.0f};
@@ -191,7 +191,7 @@ static void updateWorld(void) {
   if(e->transform.position.x>40.0f) e->velocity.x=-1.5f;
   if(e->transform.position.x< -40.0f) e->velocity.x=1.5f;
  }
- if(mission<10 && pz<=missionTargets[mission]+3.0f) {
+ if(mission<30 && pz<=missionTargets[mission]+3.0f) {
   mission++;
  }
 }
@@ -526,7 +526,7 @@ static void render(void) {
    h[0]=-47.0f; h[1]=-9.0f; h[2]=30.0f; q=drawCube(q,viewScreen,h,hr,7.0f,0.25f,7.0f,135,130,120,tmp,xyz,rgbaq,&prim,&base);
  }
  /* Mission beacon advances through the ten-stage opening story. */
- if(mission<10) {
+ if(mission<30) {
   VECTOR wp={0,8,missionTargets[mission],1},wr={0,0,0,1};
   q=drawCube(q,viewScreen,wp,wr,1.2f,15.0f,1.2f,245,185,35,tmp,xyz,rgbaq,&prim,&base);
   wp[1]=24.0f; q=drawCube(q,viewScreen,wp,wr,4.0f,1.0f,4.0f,255,220,75,tmp,xyz,rgbaq,&prim,&base);
@@ -700,7 +700,7 @@ static void render(void) {
  q=drawText(q,145,19,1,padConnected?"PAD OK":"NO PAD",padConnected?90:245,padConnected?225:85,padConnected?130:85);
  { const char *w=weatherType==0?"CLEAR":weatherType==1?"CLOUDY":weatherType==2?"POLLUTED":weatherType==3?"RAIN":"SNOW"; q=drawText(q,SW-105,19,1,w,210,210,190); }
  q=rect(q,SW/2-118,12,236,34,10,15,24);
- if(mission<10) { char ms[24]="MISSION 01/10 - MARKER"; ms[8]=(char)('0'+(mission+1)/10); ms[9]=(char)('0'+(mission+1)%10); q=drawText(q,SW/2-108,19,1,ms,245,210,105); }
+ if(mission<30) { char ms[24]="MISSION 01/30 - MARKER"; ms[8]=(char)('0'+(mission+1)/10); ms[9]=(char)('0'+(mission+1)%10); q=drawText(q,SW/2-108,19,1,ms,245,210,105); }
  else q=drawText(q,SW/2-65,19,1,"MISSION COMPLETE",100,235,140);
  /* Street-style minimap. */
  q=rect(q,12,SH-151,112,112,8,12,18);

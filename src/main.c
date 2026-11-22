@@ -27,6 +27,9 @@ static unsigned char padBuf[256] __attribute__((aligned(64)));
 static struct padButtonStatus pad;
 static int padReady=0, mission=0, logoFrames=0;
 static int padConnected=0, padInitialized=0, padOpened=0;
+static int inCar=0, mapVisible=0, playerVehicle=-1;
+static int lastTriangle=0, lastStart=0;
+static float carSpeed=0.0f, carHeading=0.0f;
 static NX_Scene nxScene;
 static NX_Camera nxCamera;
 static NX_Time nxClock;
@@ -123,6 +126,9 @@ static void initPad(void) {
  if(!padOpened) {
   if(!padPortOpen(0,0,padBuf)) { padConnected=0; return; }
   padOpened=1;
+  /* Explicitly enable DualShock analog sticks; some pads boot in digital mode. */
+  padSetMainMode(0,0,PAD_MMODE_DUALSHOCK,PAD_MMODE_LOCK);
+  for(i=0;i<30 && padGetReqState(0,0)==PAD_RSTAT_BUSY;i++) graph_wait_vsync();
  }
  padReady=0;
  for(i=0;i<120;i++) {
@@ -136,8 +142,9 @@ static void initNexonGame(void) {
  NX_Vec3 p;
  int i;
  nx_init(&nxScene);
- nxPlayer=nx_spawn(&nxScene,NX_ENTITY_PLAYER,(NX_Vec3){0.0f,0.0f,0.0f});
+ nxPlayer=nx_spawn(&nxScene,NX_ENTITY_PLAYER,(NX_Vec3){-29.0f,0.0f,0.0f});
  nx_set_player(&nxScene,nxPlayer);
+ playerVehicle=nx_spawn(&nxScene,NX_ENTITY_VEHICLE,(NX_Vec3){-19.0f,-5.0f,-5.0f});
  nx_camera_init(&nxCamera,42.0f,14.0f);
  nxCamera.position.x=0.0f; nxCamera.position.y=14.0f; nxCamera.position.z=42.0f;
  for(i=0;i<4;i++) {
@@ -205,20 +212,41 @@ static void updatePad(void) {
   if(!(pad.btns & PAD_L2)) in.turn=-1.0f;
   if(!(pad.btns & PAD_R2)) in.turn=1.0f;
   if(!(pad.btns & PAD_CROSS)) in.held=1; /* Cross = sprint */
-  nx_update_player(&nxScene,&in,1.0f/60.0f);
-  if(!(pad.btns & PAD_CIRCLE)) {
-   player->transform.position.x=0.0f;
-   player->transform.position.z=0.0f;
-   player->transform.rotation.y=0.0f;
-   cameraYaw=0.0f; cameraPitch=0.34f; mission=0;
+  { int tri=(!(pad.btns & PAD_TRIANGLE)); int sta=(!(pad.btns & PAD_START));
+    if(tri && !lastTriangle) {
+      if(!inCar) {
+        float dx=player->transform.position.x-nxScene.entities[playerVehicle].transform.position.x;
+        float dz=player->transform.position.z-nxScene.entities[playerVehicle].transform.position.z;
+        if(dx*dx+dz*dz<225.0f) { inCar=1; carSpeed=0.0f; }
+      } else { inCar=0; player->transform.position.x=nxScene.entities[playerVehicle].transform.position.x+5.0f; player->transform.position.z=nxScene.entities[playerVehicle].transform.position.z; }
+    }
+    if(sta && !lastStart) mapVisible=!mapVisible;
+    lastTriangle=tri; lastStart=sta;
   }
-  if(player->transform.position.x < -28.0f) player->transform.position.x=-28.0f;
-  if(player->transform.position.x > 28.0f) player->transform.position.x=28.0f;
-  if(player->transform.position.z < -420.0f) player->transform.position.z=-420.0f;
-  if(player->transform.position.z > 20.0f) player->transform.position.z=20.0f;
-  px=player->transform.position.x;
-  pz=player->transform.position.z;
-  heading=player->transform.rotation.y;
+  if(inCar) {
+    NX_Entity *car=&nxScene.entities[playerVehicle];
+    float throttle=-in.moveZ;
+    carSpeed+=throttle*22.0f*(1.0f/60.0f); carSpeed*=0.988f;
+    if(carSpeed>34.0f) carSpeed=34.0f; if(carSpeed< -12.0f) carSpeed=-12.0f;
+    carHeading+=in.moveX*(carSpeed>=0.0f?1.0f:-1.0f)*(0.9f+fabsf(carSpeed)*0.035f)*(1.0f/60.0f);
+    car->transform.rotation.y=carHeading;
+    car->velocity.x=sinf(carHeading)*carSpeed; car->velocity.z=-cosf(carHeading)*carSpeed;
+    car->transform.position.x+=car->velocity.x/60.0f; car->transform.position.z+=car->velocity.z/60.0f;
+    if(!(pad.btns & PAD_SQUARE)) carSpeed*=0.90f;
+    if(car->transform.position.x < -32.0f) { car->transform.position.x=-32.0f; carSpeed*=0.55f; }
+    if(car->transform.position.x > 32.0f) { car->transform.position.x=32.0f; carSpeed*=0.55f; }
+    if(car->transform.position.z < -420.0f) car->transform.position.z=-420.0f;
+    if(car->transform.position.z > 20.0f) car->transform.position.z=20.0f;
+    px=car->transform.position.x; pz=car->transform.position.z; heading=carHeading;
+  } else {
+    nx_update_player(&nxScene,&in,1.0f/60.0f);
+    if(!(pad.btns & PAD_CIRCLE)) { player->transform.position.x=-29.0f; player->transform.position.z=0.0f; player->transform.rotation.y=0.0f; cameraYaw=0.0f; cameraPitch=0.34f; mission=0; }
+    if(player->transform.position.x < -32.0f) player->transform.position.x=-32.0f;
+    if(player->transform.position.x > 32.0f) player->transform.position.x=32.0f;
+    if(player->transform.position.z < -420.0f) player->transform.position.z=-420.0f;
+    if(player->transform.position.z > 20.0f) player->transform.position.z=20.0f;
+    px=player->transform.position.x; pz=player->transform.position.z; heading=player->transform.rotation.y;
+  }
  }
  updateWorld();
 }
@@ -266,10 +294,10 @@ static void render(void) {
  }
  nx_camera_follow(&nxCamera,&nxScene.entities[nxPlayer],1.0f/60.0f);
  /* Keep the camera behind the player while allowing right-stick orbit. */
- cameraPos[0]=px+sinf(cameraYaw)*cameraDistance;
- cameraPos[1]=cameraPitch*cameraDistance;
- cameraPos[2]=pz+cosf(cameraYaw)*cameraDistance;
- cameraRot[0]=cameraPitch; cameraRot[1]=cameraYaw; cameraRot[2]=0.0f;
+ { float cy=cameraYaw+(inCar?carHeading:0.0f);
+  float tx=px+sinf(cy)*cameraDistance, ty=cameraPitch*cameraDistance+5.0f, tz=pz+cosf(cy)*cameraDistance;
+  cameraPos[0]+=(tx-cameraPos[0])*0.16f; cameraPos[1]+=(ty-cameraPos[1])*0.16f; cameraPos[2]+=(tz-cameraPos[2])*0.16f;
+  cameraRot[0]=cameraPitch; cameraRot[1]=cy; cameraRot[2]=0.0f; }
  tag=packets[ctx]->data; q=tag+1;
  q=draw_disable_tests(q,0,&zbuf);
  q=draw_clear(q,0,2048-SW/2,2048-SH/2,SW,SH,90,135,165);
@@ -325,6 +353,15 @@ static void render(void) {
   lp[1]=10.0f; q=drawCube(q,viewScreen,lp,lr,2.0f,0.8f,1.0f,255,205,115,tmp,xyz,rgbaq,&prim,&base);
   lp[0]=-31.0f; q=drawCube(q,viewScreen,lp,lr,2.0f,0.8f,1.0f,255,205,115,tmp,xyz,rgbaq,&prim,&base);
  }
+ /* Sophia's house: facade, roof, door, windows and front path. */
+ { VECTOR h={-53.0f,-1.0f,8.0f,1},hr={0,0,0,1};
+   q=drawCube(q,viewScreen,h,hr,13.0f,11.0f,12.0f,190,174,150,tmp,xyz,rgbaq,&prim,&base);
+   h[1]=11.5f; q=drawCube(q,viewScreen,h,hr,14.0f,1.8f,13.0f,105,35,42,tmp,xyz,rgbaq,&prim,&base);
+   h[0]=-53.0f; h[1]=-5.5f; h[2]=-4.3f; q=drawCube(q,viewScreen,h,hr,2.0f,4.5f,0.35f,75,45,35,tmp,xyz,rgbaq,&prim,&base);
+   h[0]=-59.0f; h[1]=1.0f; h[2]=-4.4f; q=drawCube(q,viewScreen,h,hr,2.2f,2.0f,0.35f,75,155,195,tmp,xyz,rgbaq,&prim,&base);
+   h[0]=-47.0f; q=drawCube(q,viewScreen,h,hr,2.2f,2.0f,0.35f,75,155,195,tmp,xyz,rgbaq,&prim,&base);
+   h[0]=-53.0f; h[1]=-9.0f; h[2]=-1.0f; q=drawCube(q,viewScreen,h,hr,7.0f,0.25f,7.0f,135,130,120,tmp,xyz,rgbaq,&prim,&base);
+ }
  /* Mission beacon advances through the ten-stage opening story. */
  if(mission<10) {
   VECTOR wp={0,8,missionTargets[mission],1},wr={0,0,0,1};
@@ -366,7 +403,15 @@ static void render(void) {
    np[0]+=0.7f; q=drawCube(q,viewScreen,np,vr,0.16f,0.18f,0.12f,20,20,20,tmp,xyz,rgbaq,&prim,&base);
   }
  }
- /* Player avatar is a 3D block character; camera follows from behind */
+ /* Render the drivable car when occupied; otherwise render the player. */
+ if(inCar) {
+  NX_Entity *car=&nxScene.entities[playerVehicle];
+  VECTOR cp={car->transform.position.x,-5.0f,car->transform.position.z,1},cr={0,carHeading,0,1};
+  q=drawCube(q,viewScreen,cp,cr,4.8f,1.7f,8.0f,155,28,42,tmp,xyz,rgbaq,&prim,&base);
+  cp[1]=-2.9f; q=drawCube(q,viewScreen,cp,cr,3.5f,1.25f,3.8f,55,115,145,tmp,xyz,rgbaq,&prim,&base);
+  { int wx,wz; for(wx=-1;wx<=1;wx+=2) for(wz=-1;wz<=1;wz+=2) { VECTOR wh={car->transform.position.x+wx*4.1f,-6.5f,car->transform.position.z+wz*5.2f,1}; q=drawCube(q,viewScreen,wh,cr,0.8f,1.8f,1.2f,18,20,24,tmp,xyz,rgbaq,&prim,&base); } }
+ } else {
+ /* Player avatar with layered clothes, head, hair and face details. */
  { VECTOR p={px,-2,pz,1},r={0,heading,0,1};
   q=drawCube(q,viewScreen,p,r,3.2f,7.0f,2.4f,190,35,42,tmp,xyz,rgbaq,&prim,&base);
   p[1]=6.0f; q=drawCube(q,viewScreen,p,r,2.6f,2.6f,2.6f,220,175,140,tmp,xyz,rgbaq,&prim,&base);
@@ -379,6 +424,7 @@ static void render(void) {
   q=drawCube(q,viewScreen,p,r,0.22f,0.24f,0.16f,18,18,18,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px+0.72f; q=drawCube(q,viewScreen,p,r,0.22f,0.24f,0.16f,18,18,18,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px; p[1]=5.35f; q=drawCube(q,viewScreen,p,r,0.18f,0.18f,0.16f,135,85,70,tmp,xyz,rgbaq,&prim,&base);
+ }
  }
  /* Full HUD: minimap bottom-left, health directly underneath. */
  q=draw_disable_tests(q,0,&zbuf);
@@ -408,10 +454,17 @@ static void render(void) {
  q=drawText(q,18,SH-28,1,"HP",225,230,235);
  q=rect(q,39,SH-27,77,8,65,35,35);
  q=rect(q,39,SH-27,70,8,55,205,105);
- /* Controller help bottom-right. */
- q=rect(q,SW-212,SH-48,200,36,8,12,18);
- q=drawText(q,SW-202,SH-41,1,"MOVE - LEFT STICK",225,230,235);
- q=drawText(q,SW-202,SH-27,1,"CAMERA - RIGHT STICK",150,190,220);
+ /* Controller help, vehicle speed and full-screen map overlay. */
+ q=rect(q,SW-232,SH-60,220,48,8,12,18);
+ q=drawText(q,SW-222,SH-51,1,inCar?"DRIVE - LEFT STICK":"MOVE - LEFT STICK",225,230,235);
+ q=drawText(q,SW-222,SH-37,1,"TRIANGLE - ENTER CAR",150,190,220);
+ q=drawText(q,SW-222,SH-23,1,"START - CITY MAP",150,190,220);
+ if(inCar) { q=rect(q,SW/2-55,SH-72,110,18,10,15,24); q=drawText(q,SW/2-45,SH-67,1,"SPEED",245,220,120); { int sp=(int)fabsf(carSpeed); if(sp>34)sp=34; q=rect(q,SW/2+2,SH-65,sp,6,210,45,50); } }
+ if(mapVisible) {
+  q=rect(q,SW/2-190,SH/2-145,380,290,5,9,16); q=rect(q,SW/2-180,SH/2-135,360,270,24,38,42);
+  for(i=0;i<7;i++) { q=rect(q,SW/2-165+i*54,SH/2-125,5,250,105,112,105); q=rect(q,SW/2-170,SH/2-120+i*40,340,5,105,112,105); }
+  q=rect(q,SW/2-28,SH/2-7,9,9,255,55,55); q=drawText(q,SW/2-60,SH/2-128,2,"CITY MAP",245,225,165); q=drawText(q,SW/2-170,SH/2+119,1,"START - CLOSE MAP",220,225,235);
+ }
  q=draw_finish(q);
  DMATAG_END(tag,(q-tag)-1,0,0,0);
  dma_wait_fast(); dma_channel_send_chain(DMA_CHANNEL_GIF,tag,q-tag,0,0);

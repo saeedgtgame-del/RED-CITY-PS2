@@ -24,6 +24,9 @@ static struct padButtonStatus pad;
 
 static int padReady = 0;
 static int missionComplete = 0;
+static int missionIndex = 0;
+static const float missionX[10] = {320,90,545,320,90,545,320,90,545,320};
+static const float missionY[10] = {88,120,120,220,310,310,420,420,220,470};
 
 static float playerX = 320.0f;
 static float playerY = 425.0f;
@@ -349,10 +352,15 @@ static void updatePlayer(void)
     if (playerY < 45) playerY = 45;
     if (playerY > 485) playerY = 485;
 
-    if (playerX > 280 && playerX < 360 &&
-        playerY > 60 && playerY < 120)
     {
-        missionComplete = 1;
+        float dx = playerX - missionX[missionIndex];
+        float dy = playerY - missionY[missionIndex];
+        if ((dx * dx + dy * dy) < 26.0f * 26.0f)
+        {
+            missionIndex++;
+            if (missionIndex >= 10) { missionIndex = 9; missionComplete = 1; }
+            else { playerX = 320.0f; playerY = 425.0f; }
+        }
     }
 }
 
@@ -434,18 +442,14 @@ static void drawCity(qword_t **q)
     *q = box(*q, 525, 278, 25, 25,
              190, 140, 85);
 
-    /* Mission destination */
-    *q = box(*q, 285, 65, 70, 7,
-             30, 240, 90);
-
-    *q = box(*q, 285, 65, 7, 48,
-             30, 240, 90);
-
-    *q = box(*q, 348, 65, 7, 48,
-             30, 240, 90);
-
-    *q = box(*q, 285, 106, 70, 7,
-             30, 240, 90);
+    /* Current mission marker */
+    if (!missionComplete) {
+        int mx = (int)missionX[missionIndex], my = (int)missionY[missionIndex];
+        *q = box(*q, mx-13, my-13, 26, 26, 245, 190, 35);
+        *q = box(*q, mx-7, my-7, 14, 14, 25, 230, 95);
+        *q = box(*q, mx-2, my-20, 4, 40, 245, 245, 245);
+        *q = box(*q, mx-20, my-2, 40, 4, 245, 245, 245);
+    }
 }
 
 /* --------------------------------
@@ -492,20 +496,10 @@ static void drawHUD(qword_t **q)
     *q = box(*q, 12, 9, 12, 18,
              230, 25, 35);
 
-    /* Mission bar */
-    *q = box(*q, 450, 12, 165, 9,
-             55, 55, 60);
-
-    if (missionComplete)
-    {
-        *q = box(*q, 450, 12, 165, 9,
-                 40, 220, 100);
-    }
-    else
-    {
-        *q = box(*q, 450, 12, 35, 9,
-                 220, 145, 35);
-    }
+    /* Ten-step mission progress */
+    *q = box(*q, 450, 12, 165, 9, 55, 55, 60);
+    *q = box(*q, 450, 12, missionComplete ? 165 : missionIndex * 16, 9, 40, 220, 100);
+    { int i; for (i=1; i<10; i++) *q = box(*q, 450+i*16, 10, 2, 13, 12, 15, 23); }
 }
 
 /* --------------------------------
@@ -531,16 +525,11 @@ static void renderGame(void)
     drawPlayer(&q);
     drawHUD(&q);
 
-    if (missionComplete)
-    {
-        q = box(q, 170, 225, 300, 65,
-                18, 80, 45);
-
-        q = box(q, 190, 240, 260, 7,
-                80, 240, 130);
-
-        q = box(q, 220, 258, 200, 7,
-                80, 240, 130);
+    if (missionComplete) {
+        q = box(q, 150, 205, 340, 95, 12, 45, 28);
+        q = box(q, 175, 230, 290, 8, 80, 240, 130);
+        q = box(q, 205, 255, 240, 8, 80, 240, 130);
+        q = box(q, 245, 278, 150, 5, 245, 190, 35);
     }
 
     q = draw_finish(q);

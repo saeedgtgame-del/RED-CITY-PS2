@@ -35,7 +35,7 @@ static int nxTraffic[4];
 static int nxPedestrians[4];
 static const float missionTargets[10]={-18.0f,-33.0f,-48.0f,-63.0f,-78.0f,-93.0f,-108.0f,-123.0f,-138.0f,-153.0f};
 static float px=0.0f, pz=0.0f, heading=0.0f;
-static float cameraYaw=0.0f, cameraPitch=0.25f, cameraDistance=92.0f;
+static float cameraYaw=0.0f, cameraPitch=0.34f, cameraDistance=42.0f;
 static VECTOR cameraPos={0.0f,28.0f,100.0f,1.0f};
 static VECTOR cameraRot={0.0f,0.0f,0.0f,1.0f};
 static VECTOR objPos={0.0f,0.0f,0.0f,1.0f};
@@ -138,8 +138,8 @@ static void initNexonGame(void) {
  nx_init(&nxScene);
  nxPlayer=nx_spawn(&nxScene,NX_ENTITY_PLAYER,(NX_Vec3){0.0f,0.0f,0.0f});
  nx_set_player(&nxScene,nxPlayer);
- nx_camera_init(&nxCamera,92.0f,27.0f);
- nxCamera.position.x=0.0f; nxCamera.position.y=27.0f; nxCamera.position.z=92.0f;
+ nx_camera_init(&nxCamera,42.0f,14.0f);
+ nxCamera.position.x=0.0f; nxCamera.position.y=14.0f; nxCamera.position.z=42.0f;
  for(i=0;i<4;i++) {
   p.x=(i&1)?11.0f:-11.0f; p.y=-5.0f; p.z=-55.0f-(float)i*38.0f;
   nxTraffic[i]=nx_spawn(&nxScene,NX_ENTITY_VEHICLE,p);
@@ -163,7 +163,7 @@ static void updateWorld(void) {
   if(e->transform.position.x>40.0f) e->velocity.x=-1.5f;
   if(e->transform.position.x< -40.0f) e->velocity.x=1.5f;
  }
- if(mission<10 && pz<=missionTargets[mission]+3.0f && pz>=missionTargets[mission]-8.0f) {
+ if(mission<10 && pz<=missionTargets[mission]+3.0f) {
   mission++;
  }
 }
@@ -210,7 +210,7 @@ static void updatePad(void) {
    player->transform.position.x=0.0f;
    player->transform.position.z=0.0f;
    player->transform.rotation.y=0.0f;
-   cameraYaw=0.0f; cameraPitch=0.25f; mission=0;
+   cameraYaw=0.0f; cameraPitch=0.34f; mission=0;
   }
   if(player->transform.position.x < -28.0f) player->transform.position.x=-28.0f;
   if(player->transform.position.x > 28.0f) player->transform.position.x=28.0f;
@@ -359,6 +359,11 @@ static void render(void) {
    np[0]-=2.1f; np[1]=-5.0f; np[2]-=0.4f;
    q=drawCube(q,viewScreen,np,vr,0.7f,2.5f,0.8f,35,40,55,tmp,xyz,rgbaq,&prim,&base);
    np[0]+=1.5f; q=drawCube(q,viewScreen,np,vr,0.7f,2.5f,0.8f,35,40,55,tmp,xyz,rgbaq,&prim,&base);
+   np[0]=n->transform.position.x; np[1]=3.9f; np[2]=n->transform.position.z;
+   q=drawCube(q,viewScreen,np,vr,1.25f,0.45f,1.25f,35,28,24,tmp,xyz,rgbaq,&prim,&base);
+   np[1]=2.8f; np[2]=n->transform.position.z-1.25f; np[0]-=0.35f;
+   q=drawCube(q,viewScreen,np,vr,0.16f,0.18f,0.12f,20,20,20,tmp,xyz,rgbaq,&prim,&base);
+   np[0]+=0.7f; q=drawCube(q,viewScreen,np,vr,0.16f,0.18f,0.12f,20,20,20,tmp,xyz,rgbaq,&prim,&base);
   }
  }
  /* Player avatar is a 3D block character; camera follows from behind */
@@ -367,34 +372,46 @@ static void render(void) {
   p[1]=6.0f; q=drawCube(q,viewScreen,p,r,2.6f,2.6f,2.6f,220,175,140,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px-4.0f; p[1]=-1.5f; p[2]=pz; q=drawCube(q,viewScreen,p,r,1.0f,4.5f,1.0f,190,35,42,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px+4.0f; q=drawCube(q,viewScreen,p,r,1.0f,4.5f,1.0f,190,35,42,tmp,xyz,rgbaq,&prim,&base);
-  p[0]=px-1.5f; p[1]=-8.0f; q=drawCube(q,viewScreen,p,r,1.1f,3.0f,1.2f,28,32,42,tmp,xyz,rgbaq,&prim,&base);
-  p[0]=px+1.5f; q=drawCube(q,viewScreen,p,r,1.1f,3.0f,1.2f,28,32,42,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px-1.5f; p[1]=-9.0f; q=drawCube(q,viewScreen,p,r,1.1f,3.0f,1.2f,28,32,42,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px+1.5f; p[1]=-9.0f; q=drawCube(q,viewScreen,p,r,1.1f,3.0f,1.2f,28,32,42,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px; p[1]=8.0f; p[2]=pz; q=drawCube(q,viewScreen,p,r,2.65f,0.55f,2.65f,35,27,23,tmp,xyz,rgbaq,&prim,&base);
+  p[1]=6.0f; p[2]=pz-2.35f; p[0]=px-0.72f;
+  q=drawCube(q,viewScreen,p,r,0.22f,0.24f,0.16f,18,18,18,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px+0.72f; q=drawCube(q,viewScreen,p,r,0.22f,0.24f,0.16f,18,18,18,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px; p[1]=5.35f; q=drawCube(q,viewScreen,p,r,0.18f,0.18f,0.16f,135,85,70,tmp,xyz,rgbaq,&prim,&base);
  }
- /* Clear, readable HUD drawn above the 3D world. */
+ /* Full HUD: minimap bottom-left, health directly underneath. */
  q=draw_disable_tests(q,0,&zbuf);
  q=rect(q,12,12,250,34,10,15,24);
  q=rect(q,20,20,12,18,padConnected?45:220,padConnected?220:45,55);
  q=drawText(q,42,19,1,"RED CITY",235,235,240);
  q=drawText(q,145,19,1,padConnected?"PAD OK":"NO PAD",padConnected?90:245,padConnected?225:85,padConnected?130:85);
- q=rect(q,40,18,150,5,235,235,235);
- q=rect(q,40,29,205,5,90,190,220);
- q=rect(q,SW-116,12,104,104,10,15,24);
- q=rect(q,SW-108,20,88,88,55,63,70);
- q=rect(q,SW-106,59,84,3,225,215,185);
- q=rect(q,SW-66,24,3,80,225,215,185);
- q=rect(q,SW-66+(int)(px*0.7f),64+(int)(pz*0.18f),9,9,245,45,45);
- q=rect(q,SW-70,27,11,11,255,205,55);
- q=rect(q,12,SH-46,275,34,10,15,24);
- q=drawText(q,22,SH-37,1,"MOVE LEFT STICK / D-PAD",225,230,235);
- q=drawText(q,22,SH-23,1,"CAMERA R-STICK  SPRINT X",145,185,215);
- q=rect(q,22,SH-36,20,4,245,245,245);
- q=rect(q,30,SH-41,4,14,245,245,245);
- q=rect(q,62,SH-36,20,4,245,245,245);
- q=rect(q,70,SH-41,4,14,245,245,245);
- q=rect(q,105,SH-36,14,4,80,210,120);
- q=rect(q,110,SH-41,4,14,80,210,120);
- q=rect(q,145,SH-36,14,4,230,75,75);
- q=rect(q,150,SH-41,4,14,230,75,75);
+ q=rect(q,SW/2-118,12,236,34,10,15,24);
+ if(mission<10) q=drawText(q,SW/2-108,19,1,"MISSION - REACH MARKER",245,210,105);
+ else q=drawText(q,SW/2-65,19,1,"MISSION COMPLETE",100,235,140);
+ /* Street-style minimap. */
+ q=rect(q,12,SH-151,112,112,8,12,18);
+ q=rect(q,18,SH-145,100,100,30,45,42);
+ q=rect(q,65,SH-145,7,100,155,155,145);
+ q=rect(q,18,SH-103,100,7,155,155,145);
+ q=rect(q,39,SH-145,3,100,95,110,100);
+ q=rect(q,18,SH-121,100,3,95,110,100);
+ q=rect(q,18,SH-76,100,3,95,110,100);
+ q=rect(q,86,SH-145,3,100,95,110,100);
+ { int mx=68+(int)(px*0.22f); int my=SH-140+(int)(-pz*0.16f);
+   if(mx<21)mx=21; if(mx>111)mx=111;
+   if(my<SH-140)my=SH-140; if(my>SH-51)my=SH-51;
+   q=rect(q,mx-3,my-3,7,7,255,55,55);
+ }
+ /* Health bar under the minimap. */
+ q=rect(q,12,SH-34,112,22,8,12,18);
+ q=drawText(q,18,SH-28,1,"HP",225,230,235);
+ q=rect(q,39,SH-27,77,8,65,35,35);
+ q=rect(q,39,SH-27,70,8,55,205,105);
+ /* Controller help bottom-right. */
+ q=rect(q,SW-212,SH-48,200,36,8,12,18);
+ q=drawText(q,SW-202,SH-41,1,"MOVE - LEFT STICK",225,230,235);
+ q=drawText(q,SW-202,SH-27,1,"CAMERA - RIGHT STICK",150,190,220);
  q=draw_finish(q);
  DMATAG_END(tag,(q-tag)-1,0,0,0);
  dma_wait_fast(); dma_channel_send_chain(DMA_CHANNEL_GIF,tag,q-tag,0,0);

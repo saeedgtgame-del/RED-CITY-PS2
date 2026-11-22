@@ -473,7 +473,7 @@ static void render(void) {
   { int wx,wz; for(wx=-1;wx<=1;wx+=2) for(wz=-1;wz<=1;wz+=2) { VECTOR wh={car->transform.position.x+wx*4.1f,-11.35f,car->transform.position.z+wz*5.2f,1}; q=drawCube(q,viewScreen,wh,cr,0.8f,1.8f,1.2f,18,20,24,tmp,xyz,rgbaq,&prim,&base); } }
  } else {
  /* Player avatar with layered clothes, head, hair and face details. */
- { VECTOR p={px,-2,pz,1},r={0,heading,0,1};
+ { VECTOR p={px,-2.35f,pz,1},r={0,heading,0,1};
   q=drawCube(q,viewScreen,p,r,3.2f,7.0f,2.4f,190,35,42,tmp,xyz,rgbaq,&prim,&base);
   p[1]=5.65f; q=drawCube(q,viewScreen,p,r,2.6f,2.6f,2.6f,220,175,140,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px-4.0f; p[1]=-1.85f; p[2]=pz; q=drawCube(q,viewScreen,p,r,1.0f,4.5f,1.0f,190,35,42,tmp,xyz,rgbaq,&prim,&base);
@@ -494,10 +494,11 @@ static void render(void) {
   p[0]=px+1.5f;
   q=drawCube(q,viewScreen,p,r,1.25f,0.75f,1.8f,18,20,25,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px; p[1]=7.65f; p[2]=pz; q=drawCube(q,viewScreen,p,r,2.65f,0.55f,2.65f,35,27,23,tmp,xyz,rgbaq,&prim,&base);
-  p[1]=5.65f; p[2]=pz+2.35f; p[0]=px-0.72f;
+  p[1]=5.65f; p[2]=pz+2.48f; p[0]=px-0.72f;
   q=drawCube(q,viewScreen,p,r,0.22f,0.24f,0.16f,18,18,18,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px+0.72f; q=drawCube(q,viewScreen,p,r,0.22f,0.24f,0.16f,18,18,18,tmp,xyz,rgbaq,&prim,&base);
-  p[0]=px; p[1]=5.0f; q=drawCube(q,viewScreen,p,r,0.18f,0.18f,0.16f,135,85,70,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px; p[1]=5.0f; p[2]=pz+2.55f; q=drawCube(q,viewScreen,p,r,0.18f,0.18f,0.16f,145,85,70,tmp,xyz,rgbaq,&prim,&base);
+  p[1]=4.55f; q=drawCube(q,viewScreen,p,r,0.38f,0.10f,0.12f,105,38,42,tmp,xyz,rgbaq,&prim,&base);
  }
  }
  /* Full HUD: minimap bottom-left, health directly underneath. */

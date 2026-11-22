@@ -14,6 +14,7 @@
 #include <draw3d.h>
 #include <libpad.h>
 #include "mesh_data.c"
+#include "nexon_engine.h"
 
 #define SW 640
 #define SH 448
@@ -24,6 +25,13 @@ static zbuffer_t zbuf;
 static unsigned char padBuf[256] __attribute__((aligned(64)));
 static struct padButtonStatus pad;
 static int padReady=0, mission=0, logoFrames=0;
+static NX_Scene nxScene;
+static NX_Camera nxCamera;
+static NX_Time nxClock;
+static int nxPlayer=-1;
+static int nxTraffic[4];
+static int nxPedestrians[4];
+static const float missionTargets[10]={-18.0f,-33.0f,-48.0f,-63.0f,-78.0f,-93.0f,-108.0f,-123.0f,-138.0f,-153.0f};
 static float px=0.0f, pz=0.0f, heading=0.0f;
 static VECTOR cameraPos={0.0f,28.0f,100.0f,1.0f};
 static VECTOR cameraRot={0.0f,0.0f,0.0f,1.0f};
@@ -80,6 +88,41 @@ static void initPad(void) {
   graph_wait_vsync();
  }
 }
+static void initNexonGame(void) {
+ NX_Vec3 p;
+ int i;
+ nx_init(&nxScene);
+ nxPlayer=nx_spawn(&nxScene,NX_ENTITY_PLAYER,(NX_Vec3){0.0f,0.0f,0.0f});
+ nx_set_player(&nxScene,nxPlayer);
+ nx_camera_init(&nxCamera,92.0f,27.0f);
+ nxCamera.position.x=0.0f; nxCamera.position.y=27.0f; nxCamera.position.z=92.0f;
+ for(i=0;i<4;i++) {
+  p.x=(i&1)?11.0f:-11.0f; p.y=-5.0f; p.z=-55.0f-(float)i*38.0f;
+  nxTraffic[i]=nx_spawn(&nxScene,NX_ENTITY_VEHICLE,p);
+  nxScene.entities[nxTraffic[i]].velocity.z=13.0f+(float)(i%2)*3.0f;
+  p.x=(i&1)?-38.0f:38.0f; p.y=0.0f; p.z=-20.0f-(float)i*42.0f;
+  nxPedestrians[i]=nx_spawn(&nxScene,NX_ENTITY_NPC,p);
+  nxScene.entities[nxPedestrians[i]].velocity.x=(i&1)?-1.5f:1.5f;
+ }
+ memset(&nxClock,0,sizeof(nxClock));
+}
+static void updateWorld(void) {
+ int i;
+ NX_Entity *e;
+ nx_time_step(&nxClock,1.0f/60.0f);
+ for(i=0;i<4;i++) {
+  e=&nxScene.entities[nxTraffic[i]];
+  e->transform.position.z+=e->velocity.z*nxClock.deltaTime;
+  if(e->transform.position.z>22.0f) e->transform.position.z=-205.0f-(float)i*18.0f;
+  e=&nxScene.entities[nxPedestrians[i]];
+  e->transform.position.x+=e->velocity.x*nxClock.deltaTime;
+  if(e->transform.position.x>40.0f) e->velocity.x=-1.5f;
+  if(e->transform.position.x< -40.0f) e->velocity.x=1.5f;
+ }
+ if(mission<10 && pz<=missionTargets[mission]+3.0f && pz>=missionTargets[mission]-8.0f) {
+  mission++;
+ }
+}
 static void updatePad(void) {
  int s;
  if(!padReady) {
@@ -90,18 +133,33 @@ static void updatePad(void) {
  s=padGetState(0,0);
  if(s!=PAD_STATE_STABLE) { padReady=0; return; }
  if(!padRead(0,0,&pad)) return;
- /* libpad button bits are active-low: zero means pressed */
- if(!(pad.btns & PAD_LEFT))  px-=1.8f;
- if(!(pad.btns & PAD_RIGHT)) px+=1.8f;
- if(!(pad.btns & PAD_UP))    pz-=2.2f;
- if(!(pad.btns & PAD_DOWN))  pz+=2.2f;
- if(!(pad.btns & PAD_L1)) heading-=0.035f;
- if(!(pad.btns & PAD_R1)) heading+=0.035f;
- if(px < -28) px=-28;
- if(px > 28) px=28;
- if(pz < -180) pz=-180;
- if(pz > 20) pz=20;
- if(!(pad.btns & PAD_CIRCLE)) { px=0.0f; pz=12.0f; heading=0.0f; }
+ /* libpad bits are active-low. Movement now runs through NEXON ENGINE. */
+ {
+  NX_Input in;
+  NX_Entity *player=&nxScene.entities[nxPlayer];
+  in.moveX=0.0f; in.moveZ=0.0f; in.turn=0.0f; in.pressed=0; in.held=0;
+  if(!(pad.btns & PAD_LEFT))  in.moveX=-1.0f;
+  if(!(pad.btns & PAD_RIGHT)) in.moveX=1.0f;
+  if(!(pad.btns & PAD_UP))    in.moveZ=-1.0f;
+  if(!(pad.btns & PAD_DOWN))  in.moveZ=1.0f;
+  if(!(pad.btns & PAD_L1)) in.turn=-1.0f;
+  if(!(pad.btns & PAD_R1)) in.turn=1.0f;
+  nx_update_player(&nxScene,&in,1.0f/60.0f);
+  if(!(pad.btns & PAD_CIRCLE)) {
+   player->transform.position.x=0.0f;
+   player->transform.position.z=0.0f;
+   player->transform.rotation.y=0.0f;
+   mission=0;
+  }
+  if(player->transform.position.x < -28.0f) player->transform.position.x=-28.0f;
+  if(player->transform.position.x > 28.0f) player->transform.position.x=28.0f;
+  if(player->transform.position.z < -180.0f) player->transform.position.z=-180.0f;
+  if(player->transform.position.z > 20.0f) player->transform.position.z=20.0f;
+  px=player->transform.position.x;
+  pz=player->transform.position.z;
+  heading=player->transform.rotation.y;
+ }
+ updateWorld();
 }
 
 static qword_t *drawCube(qword_t *q, MATRIX viewScreen, VECTOR pos, VECTOR rot,
@@ -144,7 +202,8 @@ static void render(void) {
   base.r=128;base.g=128;base.b=128;base.a=128;base.q=1.0f;
   create_view_screen(viewScreen,graph_aspect_ratio(),-3.0f,3.0f,-2.2f,2.2f,1.0f,2000.0f);
  }
- cameraPos[0]=px; cameraPos[1]=27.0f; cameraPos[2]=pz+92.0f;
+ nx_camera_follow(&nxCamera,&nxScene.entities[nxPlayer],1.0f/60.0f);
+ cameraPos[0]=nxCamera.position.x; cameraPos[1]=nxCamera.position.y; cameraPos[2]=nxCamera.position.z;
  cameraRot[0]=0.12f; cameraRot[1]=0.0f; cameraRot[2]=0.0f;
  tag=packets[ctx]->data; q=tag+1;
  q=draw_disable_tests(q,0,&zbuf);
@@ -183,10 +242,26 @@ static void render(void) {
   lp[1]=10.0f; q=drawCube(q,viewScreen,lp,lr,2.0f,0.8f,1.0f,255,205,115,tmp,xyz,rgbaq,&prim,&base);
   lp[0]=-31.0f; q=drawCube(q,viewScreen,lp,lr,2.0f,0.8f,1.0f,255,205,115,tmp,xyz,rgbaq,&prim,&base);
  }
- /* Yellow destination beacon: follow the road ahead */
- { VECTOR wp={0,8,-145,1},wr={0,0,0,1};
-   q=drawCube(q,viewScreen,wp,wr,1.2f,15.0f,1.2f,245,185,35,tmp,xyz,rgbaq,&prim,&base);
-   wp[1]=24.0f; q=drawCube(q,viewScreen,wp,wr,4.0f,1.0f,4.0f,255,220,75,tmp,xyz,rgbaq,&prim,&base);
+ /* Mission beacon advances through the ten-stage opening story. */
+ if(mission<10) {
+  VECTOR wp={0,8,missionTargets[mission],1},wr={0,0,0,1};
+  q=drawCube(q,viewScreen,wp,wr,1.2f,15.0f,1.2f,245,185,35,tmp,xyz,rgbaq,&prim,&base);
+  wp[1]=24.0f; q=drawCube(q,viewScreen,wp,wr,4.0f,1.0f,4.0f,255,220,75,tmp,xyz,rgbaq,&prim,&base);
+ }
+ /* Moving traffic vehicles and walking pedestrians are engine entities. */
+ for(i=0;i<4;i++) {
+  NX_Entity *v=&nxScene.entities[nxTraffic[i]];
+  VECTOR vp={v->transform.position.x,-5.0f,v->transform.position.z,1},vr={0,0,0,1};
+  q=drawCube(q,viewScreen,vp,vr,4.0f,1.8f,7.0f,(i&1)?175:35,(i&1)?35:95,(i&1)?35:165,tmp,xyz,rgbaq,&prim,&base);
+  vp[1]=-2.8f;
+  q=drawCube(q,viewScreen,vp,vr,3.0f,1.0f,3.8f,85,145,175,tmp,xyz,rgbaq,&prim,&base);
+  {
+   NX_Entity *n=&nxScene.entities[nxPedestrians[i]];
+   VECTOR np={n->transform.position.x,-2.0f,n->transform.position.z,1};
+   q=drawCube(q,viewScreen,np,vr,1.5f,4.0f,1.5f,65,95,155,tmp,xyz,rgbaq,&prim,&base);
+   np[1]=2.8f;
+   q=drawCube(q,viewScreen,np,vr,1.2f,1.2f,1.2f,205,165,130,tmp,xyz,rgbaq,&prim,&base);
+  }
  }
  /* Player avatar is a 3D block character; camera follows from behind */
  { VECTOR p={px,-2,pz,1},r={0,heading,0,1};
@@ -228,6 +303,7 @@ int main(void) {
  initGS();
  /* Logo intro is intentionally short while graphics initialize. */
  for(logoFrames=0;logoFrames<180;logoFrames++) showLogo();
+ initNexonGame();
  initPad();
  for(;;) { updatePad(); render(); }
  return 0;

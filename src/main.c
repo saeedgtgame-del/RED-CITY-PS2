@@ -34,7 +34,7 @@ static NX_Scene nxScene;
 static NX_Camera nxCamera;
 static NX_Time nxClock;
 static int nxPlayer=-1;
-static float gameMinute=480.0f, weatherTimer=0.0f, windStrength=0.18f, windTarget=0.18f, gustTimer=0.0f, dustPhase=0.0f;
+static float gameMinute=480.0f, daylight=0.81f, weatherTimer=0.0f, windStrength=0.18f, windTarget=0.18f, gustTimer=0.0f, dustPhase=0.0f;
 static unsigned int weatherSeed=0x51A7u;
 static int weatherType=0;
 static int nxTraffic[4];
@@ -177,6 +177,8 @@ static void updateWorld(void) {
  const float dt=1.0f/60.0f;
  nx_time_step(&nxClock,dt);
  gameMinute+=24.0f*dt; while(gameMinute>=1440.0f) gameMinute-=1440.0f;
+ /* Smooth 24-hour ambient cycle: dim blue nights, warm dawn/dusk, bright noon. */
+ daylight=0.25f+0.75f*(0.5f+0.5f*sinf((gameMinute-360.0f)*0.00436332313f));
  gustTimer-=dt; if(gustTimer<=0.0f) { windTarget=0.08f+(float)(worldRand()%1000u)/1000.0f*1.45f; gustTimer=5.0f+(float)(worldRand()%1200u)/100.0f; }
  windStrength+=(windTarget-windStrength)*0.008f; dustPhase+=dt*(1.0f+windStrength*4.0f);
  weatherTimer+=dt; if(weatherTimer>600.0f+(float)(worldRand()%1200u)) { int n=(int)(worldRand()%5u); if(n==weatherType)n=(n+1+(int)(worldRand()%4u))%5; weatherType=n; weatherTimer=0.0f; }
@@ -229,6 +231,29 @@ static void resolvePlayerContacts(NX_Entity *player) {
  if(player->transform.position.x > 52.0f) player->transform.position.x=52.0f;
 }
 
+/* Vehicle-to-traffic contact: keep the driven car from passing through traffic. */
+static void resolveVehicleContacts(void) {
+ int i;
+ NX_Entity *car=&nxScene.entities[playerVehicle];
+ if(!car->active) return;
+ for(i=0;i<4;i++) {
+  NX_Entity *other=&nxScene.entities[nxTraffic[i]];
+  float dx=car->transform.position.x-other->transform.position.x;
+  float dz=car->transform.position.z-other->transform.position.z;
+  float minDist=car->radius+other->radius;
+  float d2=dx*dx+dz*dz;
+  if(d2<minDist*minDist && d2>0.0001f) {
+   float d=sqrtf(d2), push=minDist-d;
+   dx/=d; dz/=d;
+   car->transform.position.x+=dx*push;
+   car->transform.position.z+=dz*push;
+   carSpeed*= -0.22f;
+   car->velocity.x*=0.25f; car->velocity.z*=0.25f;
+  }
+ }
+ if(car->transform.position.x < -52.0f) car->transform.position.x=-52.0f;
+ if(car->transform.position.x > 52.0f) car->transform.position.x=52.0f;
+}
 static void updatePad(void) {
  int s;
  if(!padInitialized || !padOpened) { initPad(); return; }
@@ -301,6 +326,7 @@ static void updatePad(void) {
     if(car->transform.position.x > 52.0f) { car->transform.position.x=52.0f; carSpeed*=0.55f; }
     if(car->transform.position.z < -900.0f) car->transform.position.z=-900.0f;
     if(car->transform.position.z > 20.0f) car->transform.position.z=20.0f;
+    resolveVehicleContacts();
     px=car->transform.position.x; pz=car->transform.position.z; heading=carHeading;
   } else {
     /* Camera-relative third-person movement.
@@ -387,7 +413,7 @@ static void render(void) {
   cameraRot[0]=cameraPitch; cameraRot[1]=cy; cameraRot[2]=0.0f; }
  tag=packets[ctx]->data; q=tag+1;
  q=draw_disable_tests(q,0,&zbuf);
- q=draw_clear(q,0,2048-SW/2,2048-SH/2,SW,SH,weatherType==3?72:(weatherType==4?145:(weatherType==2?112:90)),weatherType==3?88:(weatherType==4?155:(weatherType==2?112:135)),weatherType==3?105:(weatherType==4?175:(weatherType==2?112:165)));
+ { int sr=weatherType==3?72:(weatherType==4?145:(weatherType==2?112:90)); int sg=weatherType==3?88:(weatherType==4?155:(weatherType==2?112:135)); int sb=weatherType==3?105:(weatherType==4?175:(weatherType==2?112:165)); q=draw_clear(q,0,2048-SW/2,2048-SH/2,SW,SH,(int)(sr*daylight),(int)(sg*daylight),(int)(sb*(0.75f+daylight*0.25f))); }
  q=draw_enable_tests(q,0,&zbuf);
  /* Weather and skyline: layered clouds, a warm sun and distant hills. */
  { int w; VECTOR wr={0,0,0,1};

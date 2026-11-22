@@ -321,14 +321,14 @@ static void render(void) {
  static prim_t prim; static color_t base; static MATRIX viewScreen;
  qword_t *q,*tag; int i;
  if(!packets[0]) {
-  packets[0]=packet_init(32768,PACKET_NORMAL); packets[1]=packet_init(32768,PACKET_NORMAL);
+  packets[0]=packet_init(65536,PACKET_NORMAL); packets[1]=packet_init(65536,PACKET_NORMAL);
   tmp=memalign(128,sizeof(VECTOR)*vertex_count); xyz=memalign(128,sizeof(xyz_t)*vertex_count);
   rgbaq=memalign(128,sizeof(color_t)*vertex_count);
   prim.type=PRIM_TRIANGLE; prim.shading=PRIM_SHADE_GOURAUD; prim.mapping=DRAW_DISABLE;
   prim.fogging=DRAW_DISABLE; prim.blending=DRAW_DISABLE; prim.antialiasing=DRAW_ENABLE;
   prim.mapping_type=PRIM_MAP_ST; prim.colorfix=PRIM_UNFIXED;
   base.r=128;base.g=128;base.b=128;base.a=128;base.q=1.0f;
-  create_view_screen(viewScreen,graph_aspect_ratio(),-3.0f,3.0f,-2.2f,2.2f,3.0f,2000.0f);
+  create_view_screen(viewScreen,graph_aspect_ratio(),-3.0f,3.0f,-2.2f,2.2f,5.0f,2000.0f);
  }
  nx_camera_follow(&nxCamera,&nxScene.entities[nxPlayer],1.0f/60.0f);
  /* Keep the camera behind the player while allowing right-stick orbit. */
@@ -340,39 +340,56 @@ static void render(void) {
  q=draw_disable_tests(q,0,&zbuf);
  q=draw_clear(q,0,2048-SW/2,2048-SH/2,SW,SH,90,135,165);
  q=draw_enable_tests(q,0,&zbuf);
+ /* Weather and skyline: layered clouds, a warm sun and distant hills. */
+ { int w; VECTOR wr={0,0,0,1};
+   VECTOR sun={px+82.0f,92.0f,pz-190.0f,1};
+   q=drawCube(q,viewScreen,sun,wr,9.0f,9.0f,2.0f,255,205,105,tmp,xyz,rgbaq,&prim,&base);
+   for(w=0;w<6;w++) {
+    float wz=pz-100.0f-(float)w*115.0f;
+    float wx=px-70.0f+(float)((w*31)%140);
+    VECTOR cloud={wx,67.0f,wz,1};
+    q=drawCube(q,viewScreen,cloud,wr,10.0f,2.6f,5.0f,205,215,220,tmp,xyz,rgbaq,&prim,&base);
+    cloud[0]+=9.0f; cloud[1]-=1.0f;
+    q=drawCube(q,viewScreen,cloud,wr,8.0f,2.0f,4.0f,220,226,228,tmp,xyz,rgbaq,&prim,&base);
+   }
+   for(w=0;w<10;w++) {
+    VECTOR hill={-110.0f+(float)w*24.0f,-2.0f,-870.0f,1};
+    q=drawCube(q,viewScreen,hill,wr,18.0f,24.0f,30.0f,78,105,105,tmp,xyz,rgbaq,&prim,&base);
+   }
+ }
  /* road slab and city blocks form a small 3D street */
  { VECTOR p={0,-13,-205,1},r={0,0,0,1};
-   q=drawCube(q,viewScreen,p,r,35,1,215,58,61,67,tmp,xyz,rgbaq,&prim,&base);
+   q=drawCube(q,viewScreen,p,r,44,1,925,58,61,67,tmp,xyz,rgbaq,&prim,&base);
    /* Subtle asphalt repair strips and aggregate bands break up the flat slab. */
    for(i=0;i<16;i++) {
      VECTOR patch={-27.0f+(float)((i*17)%55),-11.78f,-14.0f-(float)i*24.0f,1};
      q=drawCube(q,viewScreen,patch,r,1.2f+(float)(i%3)*0.45f,0.08f,3.0f+(float)(i%2)*1.5f,
                 (i&1)?66:51,(i&1)?69:55,(i&1)?75:61,tmp,xyz,rgbaq,&prim,&base);
    }
-   p[0]=-40; p[1]=-11; q=drawCube(q,viewScreen,p,r,5,1,220,105,105,110,tmp,xyz,rgbaq,&prim,&base);
-   p[0]=40; q=drawCube(q,viewScreen,p,r,5,1,220,105,105,110,tmp,xyz,rgbaq,&prim,&base);
+   p[0]=-49; p[1]=-11; q=drawCube(q,viewScreen,p,r,4,1,925,105,105,110,tmp,xyz,rgbaq,&prim,&base);
+   p[0]=49; q=drawCube(q,viewScreen,p,r,4,1,925,105,105,110,tmp,xyz,rgbaq,&prim,&base);
  }
  /* raised sidewalks and curbs make the road read as a real street */
- { VECTOR p={-39.0f,-11.6f,-205.0f,1},r={0,0,0,1};
-   q=drawCube(q,viewScreen,p,r,4.0f,0.7f,220.0f,125,125,118,tmp,xyz,rgbaq,&prim,&base);
-   p[0]=39.0f; q=drawCube(q,viewScreen,p,r,4.0f,0.7f,220.0f,125,125,118,tmp,xyz,rgbaq,&prim,&base);
+ { VECTOR p={-49.0f,-11.6f,-455.0f,1},r={0,0,0,1};
+   q=drawCube(q,viewScreen,p,r,3.0f,0.7f,465.0f,125,125,118,tmp,xyz,rgbaq,&prim,&base);
+   p[0]=49.0f; q=drawCube(q,viewScreen,p,r,3.0f,0.7f,465.0f,125,125,118,tmp,xyz,rgbaq,&prim,&base);
  }
  /* broken white centre line and road-edge paint */
  for(i=0;i<23;i++) {
    VECTOR p={0,-11.5f,-8.0f-i*19.0f,1},r={0,0,0,1};
    q=drawCube(q,viewScreen,p,r,0.45f,0.18f,6.0f,235,225,190,tmp,xyz,rgbaq,&prim,&base);
-   p[0]=-33.0f; q=drawCube(q,viewScreen,p,r,0.35f,0.18f,7.0f,230,190,45,tmp,xyz,rgbaq,&prim,&base);
-   p[0]=33.0f; q=drawCube(q,viewScreen,p,r,0.35f,0.18f,7.0f,230,190,45,tmp,xyz,rgbaq,&prim,&base);
+   p[0]=-44.0f; q=drawCube(q,viewScreen,p,r,0.35f,0.18f,7.0f,230,190,45,tmp,xyz,rgbaq,&prim,&base);
+   p[0]=44.0f; q=drawCube(q,viewScreen,p,r,0.35f,0.18f,7.0f,230,190,45,tmp,xyz,rgbaq,&prim,&base);
  }
  for(i=0;i<20;i++) {
   VECTOR p1={-68,0,-25.0f-i*42.0f,1},p2={68,0,-25.0f-i*42.0f,1},r={0,0,0,1};
   q=drawCube(q,viewScreen,p1,r,12,18+(i%3)*4,12,120,78,62,tmp,xyz,rgbaq,&prim,&base);
   q=drawCube(q,viewScreen,p2,r,12,22+(i%2)*5,12,75,91,112,tmp,xyz,rgbaq,&prim,&base);
   /* bright window panels on the street-facing walls */
-  p1[0]=-35.2f; p1[1]=4.0f; p1[2]=-25.0f-i*42.0f;
+  p1[0]=-56.0f; p1[1]=4.0f; p1[2]=-25.0f-i*42.0f;
   q=drawCube(q,viewScreen,p1,r,0.35f,3.0f,3.5f,245,185,95,tmp,xyz,rgbaq,&prim,&base);
   p1[2]-=11.0f; q=drawCube(q,viewScreen,p1,r,0.35f,3.0f,3.5f,245,185,95,tmp,xyz,rgbaq,&prim,&base);
-  p2[0]=35.2f; p2[1]=5.0f; p2[2]=-25.0f-i*42.0f;
+  p2[0]=56.0f; p2[1]=5.0f; p2[2]=-25.0f-i*42.0f;
   q=drawCube(q,viewScreen,p2,r,0.35f,3.5f,3.5f,120,190,225,tmp,xyz,rgbaq,&prim,&base);
   p2[2]-=11.0f; q=drawCube(q,viewScreen,p2,r,0.35f,3.5f,3.5f,120,190,225,tmp,xyz,rgbaq,&prim,&base);
   /* Second storey windows and stone lintels add depth to the facades. */
@@ -485,15 +502,19 @@ static void render(void) {
   q=drawCube(q,viewScreen,p,r,0.85f,2.0f,0.9f,205,145,115,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px+4.0f;
   q=drawCube(q,viewScreen,p,r,0.85f,2.0f,0.9f,205,145,115,tmp,xyz,rgbaq,&prim,&base);
-  p[0]=px-1.5f; p[1]=-9.35f; p[2]=pz;
+  p[0]=px-1.5f; p[1]=-9.65f; p[2]=pz;
   q=drawCube(q,viewScreen,p,r,1.1f,3.0f,1.2f,28,32,42,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px+1.5f;
   q=drawCube(q,viewScreen,p,r,1.1f,3.0f,1.2f,28,32,42,tmp,xyz,rgbaq,&prim,&base);
-  p[0]=px-1.5f; p[1]=-11.85f; p[2]=pz-0.35f;
+  p[0]=px-1.5f; p[1]=-12.15f; p[2]=pz-0.35f;
   q=drawCube(q,viewScreen,p,r,1.25f,0.75f,1.8f,18,20,25,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px+1.5f;
   q=drawCube(q,viewScreen,p,r,1.25f,0.75f,1.8f,18,20,25,tmp,xyz,rgbaq,&prim,&base);
-  p[0]=px; p[1]=7.65f; p[2]=pz; q=drawCube(q,viewScreen,p,r,2.65f,0.55f,2.65f,35,27,23,tmp,xyz,rgbaq,&prim,&base);\n  /* Long layered hair falling behind the head to shoulder level. */\n  p[1]=3.0f; p[2]=pz-1.8f; p[0]=px-1.9f; q=drawCube(q,viewScreen,p,r,0.8f,4.8f,0.8f,48,28,24,tmp,xyz,rgbaq,&prim,&base);\n  p[0]=px+1.9f; q=drawCube(q,viewScreen,p,r,0.8f,4.8f,0.8f,48,28,24,tmp,xyz,rgbaq,&prim,&base);\n  p[1]=6.0f; p[2]=pz-1.7f; p[0]=px; q=drawCube(q,viewScreen,p,r,2.1f,1.0f,1.1f,48,28,24,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px; p[1]=7.65f; p[2]=pz; q=drawCube(q,viewScreen,p,r,2.65f,0.55f,2.65f,35,27,23,tmp,xyz,rgbaq,&prim,&base);
+  /* Long layered hair falling behind the head to shoulder level. */
+  p[1]=3.0f; p[2]=pz-1.8f; p[0]=px-1.9f; q=drawCube(q,viewScreen,p,r,0.8f,4.8f,0.8f,48,28,24,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px+1.9f; q=drawCube(q,viewScreen,p,r,0.8f,4.8f,0.8f,48,28,24,tmp,xyz,rgbaq,&prim,&base);
+  p[1]=6.0f; p[2]=pz-1.7f; p[0]=px; q=drawCube(q,viewScreen,p,r,2.1f,1.0f,1.1f,48,28,24,tmp,xyz,rgbaq,&prim,&base);
   p[1]=5.65f; p[2]=pz+2.48f; p[0]=px-0.72f;
   q=drawCube(q,viewScreen,p,r,0.22f,0.24f,0.16f,18,18,18,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px+0.72f; q=drawCube(q,viewScreen,p,r,0.22f,0.24f,0.16f,18,18,18,tmp,xyz,rgbaq,&prim,&base);
@@ -538,7 +559,28 @@ static void render(void) {
  if(mapVisible) {
   q=rect(q,SW/2-190,SH/2-145,380,290,5,9,16); q=rect(q,SW/2-180,SH/2-135,360,270,24,38,42);
   for(i=0;i<7;i++) { q=rect(q,SW/2-165+i*54,SH/2-125,5,250,105,112,105); q=rect(q,SW/2-170,SH/2-120+i*40,340,5,105,112,105); }
-  q=rect(q,SW/2-28,SH/2-7,9,9,255,55,55); q=drawText(q,SW/2-60,SH/2-128,2,"CITY MAP",245,225,165); q=drawText(q,SW/2-170,SH/2+119,1,"START - CLOSE MAP",220,225,235);
+  /* Map is world-relative: the red marker is Sophia's exact current position. */
+  for(i=0;i<20;i++) {
+   int ry=SH/2-120+i*12;
+   q=rect(q,SW/2-170,ry,340,2,75,88,82);
+  }
+  for(i=0;i<5;i++) {
+   int rx=SW/2-160+i*80;
+   q=rect(q,rx,SH/2-120,2,240,75,88,82);
+  }
+  q=rect(q,SW/2-4,SH/2-120,8,240,160,160,150);
+  q=rect(q,SW/2-170,SH/2-4,340,8,160,160,150);
+  { int hx=SW/2-170+(int)((-47.0f+50.0f)*3.4f);
+    int hy=SH/2-120+(int)(13.0f*0.26f);
+    int sx=SW/2-170+(int)((px+50.0f)*3.4f);
+    int sy=SH/2-120+(int)((-pz)*0.26f);
+    q=rect(q,hx-3,hy-3,7,7,235,190,90);
+    if(sx<SW/2-168)sx=SW/2-168; if(sx>SW/2+168)sx=SW/2+168;
+    if(sy<SH/2-118)sy=SH/2-118; if(sy>SH/2+118)sy=SH/2+118;
+    q=rect(q,sx-5,sy-5,11,11,255,45,55);
+  }
+  q=drawText(q,SW/2-60,SH/2-128,2,"CITY MAP",245,225,165);
+  q=drawText(q,SW/2-170,SH/2+119,1,"START - CLOSE MAP",220,225,235);
  }
  q=draw_finish(q);
  DMATAG_END(tag,(q-tag)-1,0,0,0);

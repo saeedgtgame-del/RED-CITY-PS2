@@ -487,7 +487,7 @@ static void render(void) {
      /* NPC 0 is Alex: dark jacket; the remaining pedestrians keep varied outfits. */
      q=drawCube(q,viewScreen,np,vr,1.5f,3.0f,1.5f,shirtR[i],shirtG[i],shirtB[i],tmp,xyz,rgbaq,&prim,&base);
      if(i==0) {
-       VECTOR lapel=np; lapel[1]=-4.4f; lapel[2]=n->transform.position.z+1.45f;
+       VECTOR lapel; memcpy(lapel,np,sizeof(VECTOR)); lapel[1]=-4.4f; lapel[2]=n->transform.position.z+1.45f;
        q=drawCube(q,viewScreen,lapel,vr,0.24f,1.4f,0.12f,105,105,110,tmp,xyz,rgbaq,&prim,&base);
        lapel[0]+=0.55f; q=drawCube(q,viewScreen,lapel,vr,0.24f,1.4f,0.12f,105,105,110,tmp,xyz,rgbaq,&prim,&base);
      } }
@@ -509,7 +509,7 @@ static void render(void) {
    np[0]-=0.35f; np[1]=-1.65f;
    q=drawCube(q,viewScreen,np,vr,0.28f,0.10f,0.10f,105,55,48,tmp,xyz,rgbaq,&prim,&base);
    /* More readable low-poly faces: ears, brows, nose bridge and hairline. */
-   { VECTOR f=np; f[1]=-1.15f; f[2]=n->transform.position.z+1.42f;
+   { VECTOR f; memcpy(f,np,sizeof(VECTOR)); f[1]=-1.15f; f[2]=n->transform.position.z+1.42f;
      f[0]=n->transform.position.x-0.72f;
      q=drawCube(q,viewScreen,f,vr,0.18f,0.42f,0.18f,190,135,112,tmp,xyz,rgbaq,&prim,&base);
      f[0]=n->transform.position.x+0.72f;

@@ -366,12 +366,12 @@ static void render(void) {
    }
  }
  /* Sparse wind-driven dust / rain / snow particles near the player. */
- { int k; for(k=0;k<12;k++) {
+ { int k; VECTOR pr={0,0,0,1}; for(k=0;k<12;k++) {
     float phase=dustPhase+(float)k*1.73f;
     VECTOR particle={px+sinf(phase*0.7f)* (8.0f+windStrength*8.0f),-8.0f+(float)(k%4)*2.2f,pz-10.0f-(float)k*4.5f,1};
-    if(weatherType==3) { particle[1]=8.0f+(float)(k%5)*3.0f; particle[0]+=sinf(phase)*2.0f; q=drawCube(q,viewScreen,particle,wr,0.07f,1.1f,0.07f,165,185,205,tmp,xyz,rgbaq,&prim,&base); }
-    else if(weatherType==4) { particle[1]=-3.0f+(float)(k%6)*3.0f; q=drawCube(q,viewScreen,particle,wr,0.18f,0.18f,0.18f,225,230,238,tmp,xyz,rgbaq,&prim,&base); }
-    else if(weatherType==2 || windStrength>0.9f) { q=drawCube(q,viewScreen,particle,wr,0.16f,0.08f,0.16f,150,132,105,tmp,xyz,rgbaq,&prim,&base); }
+    if(weatherType==3) { particle[1]=8.0f+(float)(k%5)*3.0f; particle[0]+=sinf(phase)*2.0f; q=drawCube(q,viewScreen,particle,pr,0.07f,1.1f,0.07f,165,185,205,tmp,xyz,rgbaq,&prim,&base); }
+    else if(weatherType==4) { particle[1]=-3.0f+(float)(k%6)*3.0f; q=drawCube(q,viewScreen,particle,pr,0.18f,0.18f,0.18f,225,230,238,tmp,xyz,rgbaq,&prim,&base); }
+    else if(weatherType==2 || windStrength>0.9f) { q=drawCube(q,viewScreen,particle,pr,0.16f,0.08f,0.16f,150,132,105,tmp,xyz,rgbaq,&prim,&base); }
    } }
  /* road slab and city blocks form a small 3D street */
  { VECTOR p={0,-13,-205,1},r={0,0,0,1};

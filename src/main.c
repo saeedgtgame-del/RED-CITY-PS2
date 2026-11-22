@@ -189,8 +189,17 @@ static void updatePad(void) {
   else { padConnected=0; return; }
  }
  s=padGetState(padPort,0);
- if(s!=PAD_STATE_STABLE) { padReady=0; padConnected=0; return; }
- if(!padRead(padPort,0,&pad)) return;
+ if(s!=PAD_STATE_STABLE) {
+  padReady=0; padConnected=0;
+  pad.btns=0xFFFF; pad.ljoy_h=128; pad.ljoy_v=128; pad.rjoy_h=128; pad.rjoy_v=128;
+  return;
+ }
+ if(!padRead(padPort,0,&pad)) {
+  padConnected=0;
+  pad.btns=0xFFFF; pad.ljoy_h=128; pad.ljoy_v=128; pad.rjoy_h=128; pad.rjoy_v=128;
+  return;
+ }
+ padConnected=1;
  {
   NX_Input in;
   NX_Entity *player=&nxScene.entities[nxPlayer];
@@ -207,14 +216,14 @@ static void updatePad(void) {
   if(!(pad.btns & PAD_UP))    in.moveZ=-1.0f;
   if(!(pad.btns & PAD_DOWN))  in.moveZ=1.0f;
   /* Right stick and shoulder buttons orbit the third-person camera. */
-  if(rx>0.14f || rx< -0.14f) cameraYaw+=rx*0.045f;
-  if(ry>0.14f || ry< -0.14f) {
-   cameraPitch+=ry*0.012f;
+  if(padConnected && (rx>0.22f || rx< -0.22f)) cameraYaw+=rx*0.018f;
+  if(padConnected && (ry>0.22f || ry< -0.22f)) {
+   cameraPitch+=ry*0.007f;
    if(cameraPitch<0.12f) cameraPitch=0.12f;
    if(cameraPitch>0.42f) cameraPitch=0.42f;
   }
-  if(!(pad.btns & PAD_L1)) cameraYaw-=0.035f;
-  if(!(pad.btns & PAD_R1)) cameraYaw+=0.035f;
+  if(padConnected && !(pad.btns & PAD_L1)) cameraYaw-=0.022f;
+  if(padConnected && !(pad.btns & PAD_R1)) cameraYaw+=0.022f;
   if(!(pad.btns & PAD_L2)) in.turn=-1.0f;
   if(!(pad.btns & PAD_R2)) in.turn=1.0f;
   if(!(pad.btns & PAD_CROSS)) in.held=1; /* Cross = sprint */
@@ -401,33 +410,34 @@ static void render(void) {
  for(i=0;i<4;i++) {
   NX_Entity *v=&nxScene.entities[nxTraffic[i]];
   VECTOR vp={v->transform.position.x,-5.0f,v->transform.position.z,1},vr={0,0,0,1};
+  vp[1]=-10.1f;
   q=drawCube(q,viewScreen,vp,vr,4.0f,1.8f,7.0f,(i&1)?175:35,(i&1)?35:95,(i&1)?35:165,tmp,xyz,rgbaq,&prim,&base);
-  vp[1]=-2.8f;
+  vp[1]=-7.9f;
   q=drawCube(q,viewScreen,vp,vr,3.0f,1.0f,3.8f,85,145,175,tmp,xyz,rgbaq,&prim,&base);
   /* Four visible dark wheels and front headlights on each traffic car. */
   { int wx,wz; for(wx=-1;wx<=1;wx+=2) for(wz=-1;wz<=1;wz+=2) {
-    VECTOR wheel={v->transform.position.x+wx*3.2f,-6.3f,v->transform.position.z+wz*4.6f,1};
+    VECTOR wheel={v->transform.position.x+wx*3.2f,-11.35f,v->transform.position.z+wz*4.6f,1};
     q=drawCube(q,viewScreen,wheel,vr,0.8f,1.5f,1.1f,22,24,28,tmp,xyz,rgbaq,&prim,&base);
    }
-   VECTOR lamp={v->transform.position.x-2.3f,-4.9f,v->transform.position.z-6.8f,1};
+   VECTOR lamp={v->transform.position.x-2.3f,-9.7f,v->transform.position.z-6.8f,1};
    q=drawCube(q,viewScreen,lamp,vr,0.45f,0.45f,0.3f,255,225,145,tmp,xyz,rgbaq,&prim,&base);
    lamp[0]=v->transform.position.x+2.3f;
    q=drawCube(q,viewScreen,lamp,vr,0.45f,0.45f,0.3f,255,225,145,tmp,xyz,rgbaq,&prim,&base);
   }
   {
    NX_Entity *n=&nxScene.entities[nxPedestrians[i]];
-   VECTOR np={n->transform.position.x,-2.0f,n->transform.position.z,1};
-   q=drawCube(q,viewScreen,np,vr,1.5f,4.0f,1.5f,65,95,155,tmp,xyz,rgbaq,&prim,&base);
-   np[1]=2.8f;
+   VECTOR np={n->transform.position.x,-5.2f,n->transform.position.z,1};
+   q=drawCube(q,viewScreen,np,vr,1.5f,3.0f,1.5f,65,95,155,tmp,xyz,rgbaq,&prim,&base);
+   np[1]=-1.2f;
    q=drawCube(q,viewScreen,np,vr,1.2f,1.2f,1.2f,205,165,130,tmp,xyz,rgbaq,&prim,&base);
-   np[0]-=2.1f; np[1]=-1.8f; q=drawCube(q,viewScreen,np,vr,0.65f,3.0f,0.7f,45,65,115,tmp,xyz,rgbaq,&prim,&base);
-   np[0]+=4.2f; q=drawCube(q,viewScreen,np,vr,0.65f,3.0f,0.7f,45,65,115,tmp,xyz,rgbaq,&prim,&base);
-   np[0]-=2.1f; np[1]=-9.5f; np[2]-=0.4f;
-   q=drawCube(q,viewScreen,np,vr,0.7f,2.5f,0.8f,35,40,55,tmp,xyz,rgbaq,&prim,&base);
-   np[0]+=1.5f; q=drawCube(q,viewScreen,np,vr,0.7f,2.5f,0.8f,35,40,55,tmp,xyz,rgbaq,&prim,&base);
-   np[0]=n->transform.position.x; np[1]=3.9f; np[2]=n->transform.position.z;
+   np[0]-=2.1f; np[1]=-5.2f; q=drawCube(q,viewScreen,np,vr,0.65f,2.5f,0.7f,45,65,115,tmp,xyz,rgbaq,&prim,&base);
+   np[0]+=4.2f; q=drawCube(q,viewScreen,np,vr,0.65f,2.5f,0.7f,45,65,115,tmp,xyz,rgbaq,&prim,&base);
+   np[0]-=2.1f; np[1]=-9.7f; np[2]-=0.4f;
+   q=drawCube(q,viewScreen,np,vr,0.7f,2.1f,0.8f,35,40,55,tmp,xyz,rgbaq,&prim,&base);
+   np[0]+=1.5f; q=drawCube(q,viewScreen,np,vr,0.7f,2.1f,0.8f,35,40,55,tmp,xyz,rgbaq,&prim,&base);
+   np[0]=n->transform.position.x; np[1]=-0.1f; np[2]=n->transform.position.z;
    q=drawCube(q,viewScreen,np,vr,1.25f,0.45f,1.25f,35,28,24,tmp,xyz,rgbaq,&prim,&base);
-   np[1]=2.8f; np[2]=n->transform.position.z-1.25f; np[0]-=0.35f;
+   np[1]=-1.2f; np[2]=n->transform.position.z-1.25f; np[0]-=0.35f;
    q=drawCube(q,viewScreen,np,vr,0.16f,0.18f,0.12f,20,20,20,tmp,xyz,rgbaq,&prim,&base);
    np[0]+=0.7f; q=drawCube(q,viewScreen,np,vr,0.16f,0.18f,0.12f,20,20,20,tmp,xyz,rgbaq,&prim,&base);
   }
@@ -436,9 +446,10 @@ static void render(void) {
  if(inCar) {
   NX_Entity *car=&nxScene.entities[playerVehicle];
   VECTOR cp={car->transform.position.x,-5.0f,car->transform.position.z,1},cr={0,carHeading,0,1};
+  cp[1]=-10.1f;
   q=drawCube(q,viewScreen,cp,cr,4.8f,1.7f,8.0f,155,28,42,tmp,xyz,rgbaq,&prim,&base);
-  cp[1]=-2.9f; q=drawCube(q,viewScreen,cp,cr,3.5f,1.25f,3.8f,55,115,145,tmp,xyz,rgbaq,&prim,&base);
-  { int wx,wz; for(wx=-1;wx<=1;wx+=2) for(wz=-1;wz<=1;wz+=2) { VECTOR wh={car->transform.position.x+wx*4.1f,-6.5f,car->transform.position.z+wz*5.2f,1}; q=drawCube(q,viewScreen,wh,cr,0.8f,1.8f,1.2f,18,20,24,tmp,xyz,rgbaq,&prim,&base); } }
+  cp[1]=-7.9f; q=drawCube(q,viewScreen,cp,cr,3.5f,1.25f,3.8f,55,115,145,tmp,xyz,rgbaq,&prim,&base);
+  { int wx,wz; for(wx=-1;wx<=1;wx+=2) for(wz=-1;wz<=1;wz+=2) { VECTOR wh={car->transform.position.x+wx*4.1f,-11.35f,car->transform.position.z+wz*5.2f,1}; q=drawCube(q,viewScreen,wh,cr,0.8f,1.8f,1.2f,18,20,24,tmp,xyz,rgbaq,&prim,&base); } }
  } else {
  /* Player avatar with layered clothes, head, hair and face details. */
  { VECTOR p={px,-2,pz,1},r={0,heading,0,1};

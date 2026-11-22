@@ -513,7 +513,7 @@ static void render(void) {
    np[1]=-0.35f; np[2]=n->transform.position.z+0.72f;
    q=drawCube(q,viewScreen,np,vr,0.9f,0.35f,0.35f,(i&1)?45:65,(i&1)?30:42,(i&1)?28:35,tmp,xyz,rgbaq,&prim,&base);
    /* Long-haired female pedestrians get two independently swaying hair locks. */
-   if((i&1)==0) { VECTOR nh=np; float sway=sinf(nxClock.elapsed*4.4f+(float)i)*windStrength*0.45f; nh[1]=-2.7f; nh[2]=n->transform.position.z-0.55f; nh[0]=n->transform.position.x-0.62f+sway; q=drawCube(q,viewScreen,nh,vr,0.34f,2.2f,0.38f,48,30,27,tmp,xyz,rgbaq,&prim,&base); nh[0]=n->transform.position.x+0.62f-sway; q=drawCube(q,viewScreen,nh,vr,0.34f,2.2f,0.38f,48,30,27,tmp,xyz,rgbaq,&prim,&base); }
+   if((i&1)==0) { VECTOR nh; memcpy(nh,np,sizeof(VECTOR)); float sway=sinf(nxClock.elapsed*4.4f+(float)i)*windStrength*0.45f; nh[1]=-2.7f; nh[2]=n->transform.position.z-0.55f; nh[0]=n->transform.position.x-0.62f+sway; q=drawCube(q,viewScreen,nh,vr,0.34f,2.2f,0.38f,48,30,27,tmp,xyz,rgbaq,&prim,&base); nh[0]=n->transform.position.x+0.62f-sway; q=drawCube(q,viewScreen,nh,vr,0.34f,2.2f,0.38f,48,30,27,tmp,xyz,rgbaq,&prim,&base); }
    np[0]-=2.1f; np[1]=-5.2f; q=drawCube(q,viewScreen,np,vr,0.65f,2.5f,0.7f,45,65,115,tmp,xyz,rgbaq,&prim,&base);
    np[0]+=4.2f; q=drawCube(q,viewScreen,np,vr,0.65f,2.5f,0.7f,45,65,115,tmp,xyz,rgbaq,&prim,&base);
    np[0]-=2.1f; np[1]=-9.7f; np[2]-=0.4f;

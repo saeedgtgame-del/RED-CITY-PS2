@@ -50,7 +50,7 @@ static VECTOR objRot={0.0f,0.0f,0.0f,1.0f};
 static void initGS(void) {
  frame.width=SW; frame.height=SH; frame.mask=0; frame.psm=GS_PSM_32;
  frame.address=graph_vram_allocate(SW,SH,GS_PSM_32,GRAPH_ALIGN_PAGE);
- zbuf.enable=DRAW_ENABLE; zbuf.mask=0; zbuf.method=ZTEST_METHOD_ALLPASS; zbuf.zsm=GS_ZBUF_32;
+ zbuf.enable=DRAW_ENABLE; zbuf.mask=0; zbuf.method=ZTEST_METHOD_GREATER_EQUAL; zbuf.zsm=GS_ZBUF_32;
  zbuf.address=graph_vram_allocate(SW,SH,GS_ZBUF_32,GRAPH_ALIGN_PAGE);
  graph_initialize(frame.address,SW,SH,GS_PSM_32,0,0);
  packet_t *p=packet_init(32,PACKET_NORMAL); qword_t *q=p->data;

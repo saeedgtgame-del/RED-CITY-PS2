@@ -369,6 +369,15 @@ static void render(void) {
   p2[0]=35.2f; p2[1]=5.0f; p2[2]=-25.0f-i*42.0f;
   q=drawCube(q,viewScreen,p2,r,0.35f,3.5f,3.5f,120,190,225,tmp,xyz,rgbaq,&prim,&base);
   p2[2]-=11.0f; q=drawCube(q,viewScreen,p2,r,0.35f,3.5f,3.5f,120,190,225,tmp,xyz,rgbaq,&prim,&base);
+  /* Second storey windows and stone lintels add depth to the facades. */
+  p1[1]=11.0f; p1[2]=-25.0f-i*42.0f;
+  q=drawCube(q,viewScreen,p1,r,0.38f,2.5f,2.8f,95,165,195,tmp,xyz,rgbaq,&prim,&base);
+  p1[2]-=12.0f;
+  q=drawCube(q,viewScreen,p1,r,0.38f,2.5f,2.8f,95,165,195,tmp,xyz,rgbaq,&prim,&base);
+  p2[1]=11.0f; p2[2]=-25.0f-i*42.0f;
+  q=drawCube(q,viewScreen,p2,r,0.38f,2.5f,2.8f,175,195,205,tmp,xyz,rgbaq,&prim,&base);
+  p2[2]-=12.0f;
+  q=drawCube(q,viewScreen,p2,r,0.38f,2.5f,2.8f,175,195,205,tmp,xyz,rgbaq,&prim,&base);
  }
  /* shopfront doors and simple street trees add scale and depth */
  for(i=0;i<10;i++) {

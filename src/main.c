@@ -36,7 +36,7 @@ static NX_Time nxClock;
 static int nxPlayer=-1;
 static int nxTraffic[4];
 static int nxPedestrians[4];
-static const float missionTargets[10]={-24.0f,-60.0f,-96.0f,-132.0f,-168.0f,-204.0f,-240.0f,-276.0f,-312.0f,-348.0f};
+static const float missionTargets[10]={-70.0f,-145.0f,-220.0f,-295.0f,-370.0f,-445.0f,-520.0f,-595.0f,-670.0f,-745.0f};
 static float px=0.0f, pz=0.0f, heading=0.0f;
 static float cameraYaw=0.0f, cameraPitch=0.30f, cameraDistance=32.0f;
 static VECTOR cameraPos={0.0f,28.0f,100.0f,1.0f};
@@ -170,7 +170,7 @@ static void updateWorld(void) {
  for(i=0;i<4;i++) {
   e=&nxScene.entities[nxTraffic[i]];
   e->transform.position.z+=e->velocity.z*nxClock.deltaTime;
-  if(e->transform.position.z>22.0f) e->transform.position.z=-205.0f-(float)i*18.0f;
+  if(e->transform.position.z>22.0f) e->transform.position.z=-820.0f-(float)i*24.0f;
   e=&nxScene.entities[nxPedestrians[i]];
   e->transform.position.x+=e->velocity.x*nxClock.deltaTime;
   if(e->transform.position.x>40.0f) e->velocity.x=-1.5f;
@@ -328,7 +328,7 @@ static void render(void) {
   prim.fogging=DRAW_DISABLE; prim.blending=DRAW_DISABLE; prim.antialiasing=DRAW_ENABLE;
   prim.mapping_type=PRIM_MAP_ST; prim.colorfix=PRIM_UNFIXED;
   base.r=128;base.g=128;base.b=128;base.a=128;base.q=1.0f;
-  create_view_screen(viewScreen,graph_aspect_ratio(),-3.0f,3.0f,-2.2f,2.2f,1.0f,2000.0f);
+  create_view_screen(viewScreen,graph_aspect_ratio(),-3.0f,3.0f,-2.2f,2.2f,3.0f,2000.0f);
  }
  nx_camera_follow(&nxCamera,&nxScene.entities[nxPlayer],1.0f/60.0f);
  /* Keep the camera behind the player while allowing right-stick orbit. */
@@ -389,31 +389,31 @@ static void render(void) {
  for(i=0;i<10;i++) {
   VECTOR d={-35.2f,-6.0f,-25.0f-i*42.0f,1},r={0,0,0,1};
   q=drawCube(q,viewScreen,d,r,0.4f,4.0f,2.5f,65,43,32,tmp,xyz,rgbaq,&prim,&base);
-  d[0]=35.2f; q=drawCube(q,viewScreen,d,r,0.4f,4.0f,2.5f,55,58,65,tmp,xyz,rgbaq,&prim,&base);
+  d[0]=55.2f; q=drawCube(q,viewScreen,d,r,0.4f,4.0f,2.5f,55,58,65,tmp,xyz,rgbaq,&prim,&base);
  }
  for(i=0;i<9;i++) {
   VECTOR t={-40.0f,-6.5f,-38.0f-i*48.0f,1},r={0,0,0,1};
   q=drawCube(q,viewScreen,t,r,1.0f,5.5f,1.0f,95,65,42,tmp,xyz,rgbaq,&prim,&base);
   t[1]=1.0f; q=drawCube(q,viewScreen,t,r,4.0f,4.0f,4.0f,42,105,62,tmp,xyz,rgbaq,&prim,&base);
-  t[0]=40.0f; t[1]=-6.5f; q=drawCube(q,viewScreen,t,r,1.0f,5.5f,1.0f,95,65,42,tmp,xyz,rgbaq,&prim,&base);
+  t[0]=58.0f; t[1]=-6.5f; q=drawCube(q,viewScreen,t,r,1.0f,5.5f,1.0f,95,65,42,tmp,xyz,rgbaq,&prim,&base);
   t[1]=1.0f; q=drawCube(q,viewScreen,t,r,4.0f,4.0f,4.0f,42,105,62,tmp,xyz,rgbaq,&prim,&base);
  }
  /* street lamps: poles and warm lamp heads */
  for(i=0;i<10;i++) {
   VECTOR lp={-31.0f,-1.0f,-18.0f-i*48.0f,1},lr={0,0,0,1};
   q=drawCube(q,viewScreen,lp,lr,0.65f,10.0f,0.65f,35,38,43,tmp,xyz,rgbaq,&prim,&base);
-  lp[0]=31.0f; q=drawCube(q,viewScreen,lp,lr,0.65f,10.0f,0.65f,35,38,43,tmp,xyz,rgbaq,&prim,&base);
+  lp[0]=49.0f; q=drawCube(q,viewScreen,lp,lr,0.65f,10.0f,0.65f,35,38,43,tmp,xyz,rgbaq,&prim,&base);
   lp[1]=10.0f; q=drawCube(q,viewScreen,lp,lr,2.0f,0.8f,1.0f,255,205,115,tmp,xyz,rgbaq,&prim,&base);
-  lp[0]=-31.0f; q=drawCube(q,viewScreen,lp,lr,2.0f,0.8f,1.0f,255,205,115,tmp,xyz,rgbaq,&prim,&base);
+  lp[0]=-49.0f; q=drawCube(q,viewScreen,lp,lr,2.0f,0.8f,1.0f,255,205,115,tmp,xyz,rgbaq,&prim,&base);
  }
  /* Sophia's house: facade, roof, door, windows and front path. */
- { VECTOR h={-49.0f,-1.0f,8.0f,1},hr={0,0,0,1};
+ { VECTOR h={-47.0f,-1.0f,13.0f,1},hr={0,0,0,1};
    q=drawCube(q,viewScreen,h,hr,13.0f,11.0f,12.0f,190,174,150,tmp,xyz,rgbaq,&prim,&base);
    h[1]=11.5f; q=drawCube(q,viewScreen,h,hr,14.0f,1.8f,13.0f,105,35,42,tmp,xyz,rgbaq,&prim,&base);
-   h[0]=-49.0f; h[1]=-5.5f; h[2]=20.3f; q=drawCube(q,viewScreen,h,hr,2.0f,4.5f,0.35f,75,45,35,tmp,xyz,rgbaq,&prim,&base);
-   h[0]=-55.0f; h[1]=1.0f; h[2]=20.4f; q=drawCube(q,viewScreen,h,hr,2.2f,2.0f,0.35f,75,155,195,tmp,xyz,rgbaq,&prim,&base);
-   h[0]=-43.0f; q=drawCube(q,viewScreen,h,hr,2.2f,2.0f,0.35f,75,155,195,tmp,xyz,rgbaq,&prim,&base);
-   h[0]=-49.0f; h[1]=-9.0f; h[2]=25.0f; q=drawCube(q,viewScreen,h,hr,7.0f,0.25f,7.0f,135,130,120,tmp,xyz,rgbaq,&prim,&base);
+   h[0]=-47.0f; h[1]=-5.5f; h[2]=25.3f; q=drawCube(q,viewScreen,h,hr,2.0f,4.5f,0.35f,75,45,35,tmp,xyz,rgbaq,&prim,&base);
+   h[0]=-53.0f; h[1]=1.0f; h[2]=25.4f; q=drawCube(q,viewScreen,h,hr,2.2f,2.0f,0.35f,75,155,195,tmp,xyz,rgbaq,&prim,&base);
+   h[0]=-41.0f; q=drawCube(q,viewScreen,h,hr,2.2f,2.0f,0.35f,75,155,195,tmp,xyz,rgbaq,&prim,&base);
+   h[0]=-47.0f; h[1]=-9.0f; h[2]=30.0f; q=drawCube(q,viewScreen,h,hr,7.0f,0.25f,7.0f,135,130,120,tmp,xyz,rgbaq,&prim,&base);
  }
  /* Mission beacon advances through the ten-stage opening story. */
  if(mission<10) {
@@ -489,11 +489,11 @@ static void render(void) {
   q=drawCube(q,viewScreen,p,r,1.1f,3.0f,1.2f,28,32,42,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px+1.5f;
   q=drawCube(q,viewScreen,p,r,1.1f,3.0f,1.2f,28,32,42,tmp,xyz,rgbaq,&prim,&base);
-  p[0]=px-1.5f; p[1]=-11.55f; p[2]=pz-0.35f;
+  p[0]=px-1.5f; p[1]=-11.85f; p[2]=pz-0.35f;
   q=drawCube(q,viewScreen,p,r,1.25f,0.75f,1.8f,18,20,25,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px+1.5f;
   q=drawCube(q,viewScreen,p,r,1.25f,0.75f,1.8f,18,20,25,tmp,xyz,rgbaq,&prim,&base);
-  p[0]=px; p[1]=7.65f; p[2]=pz; q=drawCube(q,viewScreen,p,r,2.65f,0.55f,2.65f,35,27,23,tmp,xyz,rgbaq,&prim,&base);
+  p[0]=px; p[1]=7.65f; p[2]=pz; q=drawCube(q,viewScreen,p,r,2.65f,0.55f,2.65f,35,27,23,tmp,xyz,rgbaq,&prim,&base);\n  /* Long layered hair falling behind the head to shoulder level. */\n  p[1]=3.0f; p[2]=pz-1.8f; p[0]=px-1.9f; q=drawCube(q,viewScreen,p,r,0.8f,4.8f,0.8f,48,28,24,tmp,xyz,rgbaq,&prim,&base);\n  p[0]=px+1.9f; q=drawCube(q,viewScreen,p,r,0.8f,4.8f,0.8f,48,28,24,tmp,xyz,rgbaq,&prim,&base);\n  p[1]=6.0f; p[2]=pz-1.7f; p[0]=px; q=drawCube(q,viewScreen,p,r,2.1f,1.0f,1.1f,48,28,24,tmp,xyz,rgbaq,&prim,&base);
   p[1]=5.65f; p[2]=pz+2.48f; p[0]=px-0.72f;
   q=drawCube(q,viewScreen,p,r,0.22f,0.24f,0.16f,18,18,18,tmp,xyz,rgbaq,&prim,&base);
   p[0]=px+0.72f; q=drawCube(q,viewScreen,p,r,0.22f,0.24f,0.16f,18,18,18,tmp,xyz,rgbaq,&prim,&base);
@@ -519,7 +519,7 @@ static void render(void) {
  q=rect(q,18,SH-121,100,3,95,110,100);
  q=rect(q,18,SH-76,100,3,95,110,100);
  q=rect(q,86,SH-145,3,100,95,110,100);
- { int mx=68+(int)(px*1.5f); int my=SH-140+(int)(-pz*0.24f);
+ { int mx=21+(int)((px+50.0f)*0.92f); int my=SH-140+(int)((-pz)*0.095f);
    if(mx<21)mx=21; if(mx>111)mx=111;
    if(my<SH-140)my=SH-140; if(my>SH-51)my=SH-51;
    q=rect(q,mx-3,my-3,7,7,255,55,55);

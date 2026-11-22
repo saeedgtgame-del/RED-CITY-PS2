@@ -102,7 +102,7 @@ static void updatePad(void) {
  if(!(pad.btns & PAD_CROSS)) { mission=(mission+1)%10; }
 }
 
-static void drawCube(qword_t *q, MATRIX viewScreen, VECTOR pos, VECTOR rot,
+static qword_t *drawCube(qword_t *q, MATRIX viewScreen, VECTOR pos, VECTOR rot,
                      float sx,float sy,float sz,int cr,int cg,int cb,
                      VECTOR *tmp, xyz_t *xyz, color_t *rgbaq,
                      prim_t *prim,color_t *base) {
@@ -121,6 +121,7 @@ static void drawCube(qword_t *q, MATRIX viewScreen, VECTOR pos, VECTOR rot,
  for(i=0;i<points_count;i++){ q->dw[0]=rgbaq[points[i]].rgbaq; q->dw[1]=xyz[points[i]].xyz; q++; }
  /* qword alignment handled by primitive end */
  q=draw_prim_end(q,2,DRAW_RGBAQ_REGLIST);
+ return q;
 }
 static void render(void) {
  static packet_t *packets[2]={0,0}; static int ctx=0;
@@ -144,16 +145,16 @@ static void render(void) {
  q=draw_clear(q,0,2048-SW/2,2048-SH/2,SW,SH,90,135,165);
  q=draw_enable_tests(q,0,&zbuf);
  /* road slab and city blocks form a small 3D street */
- { VECTOR p={0,-13,-75,1},r={0,0,0,1}; drawCube(q,viewScreen,p,r,35,1,125,45,48,54,tmp,xyz,rgbaq,&prim,&base); }
+ { VECTOR p={0,-13,-75,1},r={0,0,0,1}; q=drawCube(q,viewScreen,p,r,35,1,125,45,48,54,tmp,xyz,rgbaq,&prim,&base); }
  for(i=0;i<6;i++) {
   VECTOR p1={-48,0,-25.0f-i*42.0f,1},p2={48,0,-25.0f-i*42.0f,1},r={0,0,0,1};
-  drawCube(q,viewScreen,p1,r,12,18+(i%3)*4,12,120,78,62,tmp,xyz,rgbaq,&prim,&base);
-  drawCube(q,viewScreen,p2,r,12,22+(i%2)*5,12,75,91,112,tmp,xyz,rgbaq,&prim,&base);
+  q=drawCube(q,viewScreen,p1,r,12,18+(i%3)*4,12,120,78,62,tmp,xyz,rgbaq,&prim,&base);
+  q=drawCube(q,viewScreen,p2,r,12,22+(i%2)*5,12,75,91,112,tmp,xyz,rgbaq,&prim,&base);
  }
  /* Player avatar is a 3D block character; camera follows from behind */
  { VECTOR p={px,-2,pz,1},r={0,heading,0,1};
-  drawCube(q,viewScreen,p,r,3.2f,7.0f,2.4f,190,35,42,tmp,xyz,rgbaq,&prim,&base);
-  p.y=6.0f; drawCube(q,viewScreen,p,r,2.6f,2.6f,2.6f,220,175,140,tmp,xyz,rgbaq,&prim,&base);
+  q=drawCube(q,viewScreen,p,r,3.2f,7.0f,2.4f,190,35,42,tmp,xyz,rgbaq,&prim,&base);
+  p.y=6.0f; q=drawCube(q,viewScreen,p,r,2.6f,2.6f,2.6f,220,175,140,tmp,xyz,rgbaq,&prim,&base);
  }
  /* Simple HUD bars, safely inside frame */
  q=rect(q,12,12,210,8,12,15,22);

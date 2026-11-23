@@ -721,7 +721,7 @@ static void render(void) {
    stripe[0]=v->transform.position.x-1.0f;
    q=drawCube(q,viewScreen,stripe,vr,0.55f,0.42f,0.38f,((int)(nxClock.elapsed*7.0f)&1)?245:35,35,245,tmp,xyz,rgbaq,&prim,&base);
    stripe[0]=v->transform.position.x+1.0f;
-   q=drawCube(q,viewScreen,stripe,vr,0.55f,0.42f,0.38f,35,90,245,((int)(nxClock.elapsed*7.0f)&1)?245:35,tmp,xyz,rgbaq,&prim,&base);
+   q=drawCube(q,viewScreen,stripe,vr,0.55f,0.42f,0.38f,((int)(nxClock.elapsed*7.0f)&1)?35:245,((int)(nxClock.elapsed*7.0f)&1)?90:35,((int)(nxClock.elapsed*7.0f)&1)?245:35,tmp,xyz,rgbaq,&prim,&base);
   }
   vp[1]=-7.9f;
   q=drawCube(q,viewScreen,vp,vr,3.0f,1.0f,3.8f,85,145,175,tmp,xyz,rgbaq,&prim,&base);

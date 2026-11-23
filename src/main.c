@@ -460,11 +460,11 @@ static qword_t *drawCube(qword_t *q, MATRIX viewScreen, VECTOR pos, VECTOR rot,
    int ids[3]={0,j,j+1};
    for(k=0;k<3;k++) {
     VECTOR *v=&a[ids[k]];
-    float w=v[3];
+    float w=(*v)[3];
     if(fabsf(w)<0.000001f || outCount>=MAX_CLIPPED_VERTICES) break;
-    tmp[outCount][0]=v[0]/w;
-    tmp[outCount][1]=v[1]/w;
-    tmp[outCount][2]=v[2]/w;
+    tmp[outCount][0]=(*v)[0]/w;
+    tmp[outCount][1]=(*v)[1]/w;
+    tmp[outCount][2]=(*v)[2]/w;
     tmp[outCount][3]=1.0f;
     outCount++;
    }

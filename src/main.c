@@ -40,7 +40,7 @@ static unsigned int weatherSeed=0x51A7u;
 static int weatherType=0;
 static int nxTraffic[4];
 static int nxPedestrians[4];
-static const float missionTargets[30]={-70.0f,-145.0f,-220.0f,-295.0f,-370.0f,-445.0f,-520.0f,-595.0f,-670.0f,-745.0f,-820.0f,-895.0f,-970.0f,-1045.0f,-1120.0f,-1195.0f,-1270.0f,-1345.0f,-1420.0f,-1495.0f,-1570.0f,-1645.0f,-1720.0f,-1795.0f,-1870.0f,-1945.0f,-2020.0f,-2095.0f,-2170.0f,-2245.0f};
+static const float missionTargets[15]={-70.0f,-145.0f,-220.0f,-295.0f,-370.0f,-445.0f,-520.0f,-595.0f,-670.0f,-745.0f,-820.0f,-895.0f,-970.0f,-1045.0f,-1120.0f};
 static float px=0.0f, pz=0.0f, heading=0.0f;
 static float cameraYaw=0.0f, cameraPitch=0.35f, cameraDistance=8.0f;
 static int cameraReady=0;
@@ -194,7 +194,7 @@ static void updateWorld(void) {
   if(e->transform.position.x>40.0f) e->velocity.x=-1.5f;
   if(e->transform.position.x< -40.0f) e->velocity.x=1.5f;
  }
- if(mission<30 && pz<=missionTargets[mission]+3.0f) {
+ if(mission<15 && pz<=missionTargets[mission]+3.0f) {
   mission++;
  }
 }
@@ -459,12 +459,12 @@ static qword_t *drawCube(qword_t *q, MATRIX viewScreen, VECTOR pos, VECTOR rot,
   for(j=1;j<n-1;j++) {
    int ids[3]={0,j,j+1};
    for(k=0;k<3;k++) {
-    VECTOR *v=&a[ids[k]];
-    float w=(*v)[3];
+    float *v=a[ids[k]];
+    float w=v[3];
     if(fabsf(w)<0.000001f || outCount>=MAX_CLIPPED_VERTICES) break;
-    tmp[outCount][0]=(*v)[0]/w;
-    tmp[outCount][1]=(*v)[1]/w;
-    tmp[outCount][2]=(*v)[2]/w;
+    tmp[outCount][0]=v[0]/w;
+    tmp[outCount][1]=v[1]/w;
+    tmp[outCount][2]=v[2]/w;
     tmp[outCount][3]=1.0f;
     outCount++;
    }
@@ -680,7 +680,7 @@ static void render(void) {
    h[0]=-47.0f; h[1]=-9.0f; h[2]=30.0f; q=drawCube(q,viewScreen,h,hr,7.0f,0.25f,7.0f,135,130,120,tmp,xyz,rgbaq,&prim,&base);
  }
  /* Mission beacon advances through the ten-stage opening story. */
- if(mission<30) {
+ if(mission<15) {
   VECTOR wp={0,8,missionTargets[mission],1},wr={0,0,0,1};
   q=drawCube(q,viewScreen,wp,wr,1.2f,15.0f,1.2f,245,185,35,tmp,xyz,rgbaq,&prim,&base);
   wp[1]=24.0f; q=drawCube(q,viewScreen,wp,wr,4.0f,1.0f,4.0f,255,220,75,tmp,xyz,rgbaq,&prim,&base);
@@ -902,7 +902,7 @@ static void render(void) {
  q=drawText(q,145,19,1,padConnected?"PAD OK":"NO PAD",padConnected?90:245,padConnected?225:85,padConnected?130:85);
  { const char *w=weatherType==0?"CLEAR":weatherType==1?"CLOUDY":weatherType==2?"POLLUTED":weatherType==3?"RAIN":"SNOW"; q=drawText(q,SW-105,19,1,w,210,210,190); }
  q=rect(q,SW/2-118,12,236,34,10,15,24);
- if(mission<30) { char ms[24]="MISSION 01/30 - MARKER"; ms[8]=(char)('0'+(mission+1)/10); ms[9]=(char)('0'+(mission+1)%10); q=drawText(q,SW/2-108,19,1,ms,245,210,105); }
+ if(mission<30) { char ms[24]="MISSION 01/15 - MARKER"; ms[8]=(char)('0'+(mission+1)/10); ms[9]=(char)('0'+(mission+1)%10); q=drawText(q,SW/2-108,19,1,ms,245,210,105); }
  else q=drawText(q,SW/2-65,19,1,"MISSION COMPLETE",100,235,140);
  /* Street-style minimap. */
  q=rect(q,12,SH-151,112,112,8,12,18);
@@ -930,41 +930,43 @@ static void render(void) {
  q=drawText(q,SW-222,SH-23,1,"START MAP - SELECT PHONE",150,190,220);
  if(inCar) { q=rect(q,SW/2-55,SH-72,110,18,10,15,24); q=drawText(q,SW/2-45,SH-67,1,"SPEED",245,220,120); { int sp=(int)fabsf(carSpeed); if(sp>34)sp=34; q=rect(q,SW/2+2,SH-65,sp,6,210,45,50); } }
  if(phoneVisible) {
-  int py=58,pxp=SW/2-112;
-  q=rect(q,pxp-5,py-5,224,398,3,4,7);
-  q=rect(q,pxp,py,214,388,18,22,30);
-  q=rect(q,pxp+8,py+8,198,28,35,42,54);
-  q=drawText(q,pxp+18,py+18,1,"RED CITY PHONE",235,225,205);
-  q=drawText(q,pxp+16,py+52,1,"09:41  SIGNAL  BATTERY",130,220,165);
+  /* Keep the entire phone inside a conservative TV-safe area (overscan-safe). */
+  int phoneW=190,phoneH=350;
+  int pxp=(SW-phoneW)/2,py=(SH-phoneH)/2;
+  q=rect(q,pxp-4,py-4,phoneW+8,phoneH+8,3,4,7);
+  q=rect(q,pxp,py,phoneW,phoneH,18,22,30);
+  q=rect(q,pxp+7,py+7,phoneW-14,25,35,42,54);
+  q=drawText(q,pxp+13,py+15,1,"RED CITY PHONE",235,225,205);
+  q=drawText(q,pxp+12,py+43,1,"09:41  SIGNAL  BATTERY",130,220,165);
   if(phonePage==0) {
-    q=drawText(q,pxp+58,py+91,2,"PHONE",245,245,245);
+    q=drawText(q,pxp+50,py+76,2,"PHONE",245,245,245);
     { const char *apps[4]={"CONTACTS","MESSAGES","CITY MAP","SETTINGS"};
       int k; for(k=0;k<4;k++) {
-        int ay=py+132+k*54;
-        q=rect(q,pxp+18,ay,178,43,(k==phoneSelection)?110:43,(k==phoneSelection)?35:50,(k==phoneSelection)?48:62);
-        q=rect(q,pxp+27,ay+9,24,24,(k==0)?70:(k==1)?65:(k==2)?55:90,(k==0)?145:(k==1)?105:(k==2)?130:95,(k==0)?205:(k==1)?155:(k==2)?95:125);
-        q=drawText(q,pxp+60,ay+17,1,apps[k],235,235,235);
+        int ay=py+108+k*47;
+        q=rect(q,pxp+12,ay,166,38,(k==phoneSelection)?110:43,(k==phoneSelection)?35:50,(k==phoneSelection)?48:62);
+        q=rect(q,pxp+20,ay+7,22,22,(k==0)?70:(k==1)?65:(k==2)?55:90,(k==0)?145:(k==1)?105:(k==2)?130:95,(k==0)?205:(k==1)?155:(k==2)?95:125);
+        q=drawText(q,pxp+50,ay+15,1,apps[k],235,235,235);
       }
     }
-    q=drawText(q,pxp+22,py+359,1,"UP DOWN X OPEN O BACK",175,190,205);
+    q=drawText(q,pxp+14,py+321,1,"UP DOWN X OPEN O BACK",175,190,205);
   } else if(phonePage==1) {
-    q=drawText(q,pxp+22,py+96,2,"CONTACTS",245,225,170);
-    q=drawText(q,pxp+22,py+145,1,"JACK - GARAGE",225,230,235);
-    q=drawText(q,pxp+22,py+184,1,"ALEX MORGAN",225,230,235);
-    q=drawText(q,pxp+22,py+223,1,"MARCUS",225,230,235);
-    q=drawText(q,pxp+22,py+262,1,"VICTOR CROSS",225,230,235);
-    q=drawText(q,pxp+22,py+359,1,"O BACK TO PHONE",175,190,205);
+    q=drawText(q,pxp+14,py+80,2,"CONTACTS",245,225,170);
+    q=drawText(q,pxp+14,py+125,1,"JACK - GARAGE",225,230,235);
+    q=drawText(q,pxp+14,py+160,1,"ALEX MORGAN",225,230,235);
+    q=drawText(q,pxp+14,py+195,1,"MARCUS",225,230,235);
+    q=drawText(q,pxp+14,py+230,1,"VICTOR CROSS",225,230,235);
+    q=drawText(q,pxp+14,py+321,1,"O BACK TO PHONE",175,190,205);
   } else if(phonePage==2) {
-    q=drawText(q,pxp+22,py+96,2,"MESSAGES",245,225,170);
-    q=drawText(q,pxp+22,py+145,1,"JACK: CALL ME",225,230,235);
-    q=drawText(q,pxp+22,py+184,1,"ALEX: WE NEED TO TALK",225,230,235);
-    q=drawText(q,pxp+22,py+223,1,"NEW CITY MESSAGE",150,210,185);
+    q=drawText(q,pxp+14,py+80,2,"MESSAGES",245,225,170);
+    q=drawText(q,pxp+14,py+125,1,"JACK: CALL ME",225,230,235);
+    q=drawText(q,pxp+14,py+160,1,"ALEX: WE NEED TO TALK",225,230,235);
+    q=drawText(q,pxp+14,py+195,1,"NEW CITY MESSAGE",150,210,185);
     q=drawText(q,pxp+22,py+359,1,"O BACK TO PHONE",175,190,205);
   } else {
-    q=drawText(q,pxp+22,py+96,2,"SETTINGS",245,225,170);
-    q=drawText(q,pxp+22,py+145,1,"SOUND - GAME DEFAULT",225,230,235);
-    q=drawText(q,pxp+22,py+184,1,"DISPLAY - AUTO",225,230,235);
-    q=drawText(q,pxp+22,py+223,1,"LANGUAGE - PERSIAN",225,230,235);
+    q=drawText(q,pxp+14,py+80,2,"SETTINGS",245,225,170);
+    q=drawText(q,pxp+14,py+125,1,"SOUND - GAME DEFAULT",225,230,235);
+    q=drawText(q,pxp+14,py+160,1,"DISPLAY - AUTO",225,230,235);
+    q=drawText(q,pxp+14,py+195,1,"LANGUAGE - PERSIAN",225,230,235);
     q=drawText(q,pxp+22,py+359,1,"O BACK TO PHONE",175,190,205);
   }
  } 

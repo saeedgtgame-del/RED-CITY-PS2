@@ -442,10 +442,20 @@ static qword_t *drawCube(qword_t *q, MATRIX viewScreen, VECTOR pos, VECTOR rot,
     would connect the clipped point to the screen origin and draw long spikes. */
  for(i=0;i<points_count;i+=3) {
   int a=points[i],b=points[i+1],d=points[i+2];
-  int ca=(fabsf(tmp[a][0])<0.00001f && fabsf(tmp[a][1])<0.00001f && fabsf(tmp[a][2])<0.00001f);
-  int cb=(fabsf(tmp[b][0])<0.00001f && fabsf(tmp[b][1])<0.00001f && fabsf(tmp[b][2])<0.00001f);
-  int cc=(fabsf(tmp[d][0])<0.00001f && fabsf(tmp[d][1])<0.00001f && fabsf(tmp[d][2])<0.00001f);
-  if(ca || cb || cc) continue;
+  int ids[3]={a,b,d},v,invalid=0;
+  /* Guard the GS from invalid/out-of-frustum screen coordinates. */
+  for(v=0;v<3;v++) {
+   int k=ids[v];
+   float x=tmp[k][0],y=tmp[k][1],z=tmp[k][2];
+   if(x!=x || y!=y || z!=z ||
+      x < -1.02f || x > 1.02f ||
+      y < -1.02f || y > 1.02f ||
+      z < -1.02f || z > 1.02f ||
+      (fabsf(x)<0.00001f && fabsf(y)<0.00001f && fabsf(z)<0.00001f)) {
+    invalid=1; break;
+   }
+  }
+  if(invalid) continue;
   q->dw[0]=rgbaq[a].rgbaq; q->dw[1]=xyz[a].xyz; q++;
   q->dw[0]=rgbaq[b].rgbaq; q->dw[1]=xyz[b].xyz; q++;
   q->dw[0]=rgbaq[d].rgbaq; q->dw[1]=xyz[d].xyz; q++;

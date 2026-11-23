@@ -152,6 +152,7 @@ static void initNexonGame(void) {
  int i;
  nx_init(&nxScene);
  nxPlayer=nx_spawn(&nxScene,NX_ENTITY_PLAYER,(NX_Vec3){-29.0f,-0.35f,0.0f});
+ px=-29.0f; pz=0.0f; heading=0.0f;
  nx_set_player(&nxScene,nxPlayer);
  nxScene.entities[nxPlayer].radius=1.8f;
  playerVehicle=nx_spawn(&nxScene,NX_ENTITY_VEHICLE,(NX_Vec3){-19.0f,-5.0f,-5.0f});
@@ -433,16 +434,22 @@ static void render(void) {
  }
  nx_camera_follow(&nxCamera,&nxScene.entities[nxPlayer],1.0f/60.0f);
  /* Keep the camera behind the player while allowing right-stick orbit. */
- { float cy=cameraYaw+(inCar?carHeading:nxScene.entities[nxPlayer].transform.rotation.y);
-  /* Place the camera on the character's rear hemisphere, not in front of her.
-     At heading zero Sophia faces +Z, so her rear is -Z. */
-  float tx=px-sinf(cy)*cameraDistance;
-  float ty=5.5f;
-  float tz=pz-cosf(cy)*cameraDistance;
-  cameraPos[0]+=(tx-cameraPos[0])*0.24f;
-  cameraPos[1]+=(ty-cameraPos[1])*0.24f;
-  cameraPos[2]+=(tz-cameraPos[2])*0.24f;
-  /* Turn the view back toward Sophia from the rear camera position. */
+ { NX_Entity *follow=inCar?&nxScene.entities[playerVehicle]:&nxScene.entities[nxPlayer];
+  float targetX=follow->transform.position.x;
+  float targetZ=follow->transform.position.z;
+  float targetHeading=inCar?carHeading:follow->transform.rotation.y;
+  float cy=cameraYaw+targetHeading;
+  /* Read the live entity transform every frame; never follow stale input-cache coordinates. */
+  px=targetX; pz=targetZ; heading=targetHeading;
+  /* Sophia faces +Z at heading zero, so the camera sits behind her on -Z. */
+  {
+   float tx=targetX-sinf(cy)*cameraDistance;
+   float ty=follow->transform.position.y+8.0f;
+   float tz=targetZ-cosf(cy)*cameraDistance;
+   cameraPos[0]+=(tx-cameraPos[0])*0.32f;
+   cameraPos[1]+=(ty-cameraPos[1])*0.32f;
+   cameraPos[2]+=(tz-cameraPos[2])*0.32f;
+  }
   cameraRot[0]=cameraPitch;
   cameraRot[1]=cy;
   cameraRot[2]=0.0f; }

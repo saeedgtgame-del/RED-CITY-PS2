@@ -444,7 +444,7 @@ static void render(void) {
   cameraPos[2]+=(tz-cameraPos[2])*0.24f;
   /* Turn the view back toward Sophia from the rear camera position. */
   cameraRot[0]=cameraPitch;
-  cameraRot[1]=cy+3.14159265f;
+  cameraRot[1]=cy;
   cameraRot[2]=0.0f; }
  tag=packets[ctx]->data; q=tag+1;
  q=draw_disable_tests(q,0,&zbuf);

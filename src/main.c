@@ -41,7 +41,7 @@ static int nxTraffic[4];
 static int nxPedestrians[4];
 static const float missionTargets[30]={-70.0f,-145.0f,-220.0f,-295.0f,-370.0f,-445.0f,-520.0f,-595.0f,-670.0f,-745.0f,-820.0f,-895.0f,-970.0f,-1045.0f,-1120.0f,-1195.0f,-1270.0f,-1345.0f,-1420.0f,-1495.0f,-1570.0f,-1645.0f,-1720.0f,-1795.0f,-1870.0f,-1945.0f,-2020.0f,-2095.0f,-2170.0f,-2245.0f};
 static float px=0.0f, pz=0.0f, heading=0.0f;
-static float cameraYaw=0.0f, cameraPitch=0.30f, cameraDistance=14.0f;
+static float cameraYaw=0.0f, cameraPitch=0.35f, cameraDistance=8.0f;
 static VECTOR cameraPos={-29.0f,5.5f,-14.0f,1.0f};
 static VECTOR cameraRot={0.0f,0.0f,0.0f,1.0f};
 static VECTOR objPos={0.0f,0.0f,0.0f,1.0f};
@@ -432,27 +432,37 @@ static void render(void) {
   base.r=128;base.g=128;base.b=128;base.a=128;base.q=1.0f;
   create_view_screen(viewScreen,graph_aspect_ratio(),-3.0f,3.0f,-2.2f,2.2f,5.0f,2000.0f);
  }
- nx_camera_follow(&nxCamera,&nxScene.entities[nxPlayer],1.0f/60.0f);
- /* Keep the camera behind the player while allowing right-stick orbit. */
+ /* GTA-style independent follow camera: follow the live player/vehicle,
+    keep a close rear view, and calculate the exact look-at angles each frame.
+    The PS2SDK world-view matrix expects camera WORLD rotation, not view rotation. */
  { NX_Entity *follow=inCar?&nxScene.entities[playerVehicle]:&nxScene.entities[nxPlayer];
   float targetX=follow->transform.position.x;
   float targetZ=follow->transform.position.z;
+  float targetY=follow->transform.position.y+(inCar?1.4f:1.65f);
   float targetHeading=inCar?carHeading:follow->transform.rotation.y;
-  float cy=cameraYaw+targetHeading;
-  /* Read the live entity transform every frame; never follow stale input-cache coordinates. */
+  float cy=targetHeading+cameraYaw;
+  float dist=inCar?11.0f:8.0f;
+  float height=inCar?4.6f:3.7f;
+  float followH=inCar?0.18f:0.24f;
+  float tx=targetX-sinf(cy)*dist;
+  float ty=targetY+height;
+  float tz=targetZ-cosf(cy)*dist;
+  float dx,dy,dz,horizontal;
   px=targetX; pz=targetZ; heading=targetHeading;
-  /* Sophia faces +Z at heading zero, so the camera sits behind her on -Z. */
-  {
-   float tx=targetX-sinf(cy)*cameraDistance;
-   float ty=follow->transform.position.y+8.0f;
-   float tz=targetZ-cosf(cy)*cameraDistance;
-   cameraPos[0]+=(tx-cameraPos[0])*0.32f;
-   cameraPos[1]+=(ty-cameraPos[1])*0.32f;
-   cameraPos[2]+=(tz-cameraPos[2])*0.32f;
-  }
-  cameraRot[0]=cameraPitch;
-  cameraRot[1]=cy;
-  cameraRot[2]=0.0f; }
+  cameraPos[0]+=(tx-cameraPos[0])*followH;
+  cameraPos[1]+=(ty-cameraPos[1])*(inCar?0.16f:0.20f);
+  cameraPos[2]+=(tz-cameraPos[2])*followH;
+  /* Derive yaw/pitch from camera-to-target vector so the lens always points
+     at Sophia's upper body instead of relying on a guessed fixed pitch. */
+  dx=targetX-cameraPos[0];
+  dy=targetY-cameraPos[1];
+  dz=targetZ-cameraPos[2];
+  horizontal=sqrtf(dx*dx+dz*dz);
+  cameraRot[0]=atan2f(-dy,horizontal);
+  cameraRot[1]=atan2f(dx,dz);
+  cameraRot[2]=0.0f;
+  cameraPitch=cameraRot[0];
+ }
  tag=packets[ctx]->data; q=tag+1;
  q=draw_disable_tests(q,0,&zbuf);
  { int sr=weatherType==3?72:(weatherType==4?145:(weatherType==2?112:90)); int sg=weatherType==3?88:(weatherType==4?155:(weatherType==2?112:135)); int sb=weatherType==3?105:(weatherType==4?175:(weatherType==2?112:165)); q=draw_clear(q,0,2048-SW/2,2048-SH/2,SW,SH,(int)(sr*daylight),(int)(sg*daylight),(int)(sb*(0.75f+daylight*0.25f))); }

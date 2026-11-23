@@ -368,25 +368,51 @@ static qword_t *drawCube(qword_t *q, MATRIX viewScreen, VECTOR pos, VECTOR rot,
                      float sx,float sy,float sz,int cr,int cg,int cb,
                      VECTOR *tmp, xyz_t *xyz, color_t *rgbaq,
                      prim_t *prim,color_t *base) {
- MATRIX lw,wv,ls; int i;
- VECTOR scaled[24]; int k;
- for(k=0;k<vertex_count;k++) {
-  /* mesh vertices are authored at +/-10 units; convert requested half-extents. */
-  scaled[k][0]=vertices[k][0]*(sx*0.1f);
-  scaled[k][1]=vertices[k][1]*(sy*0.1f);
-  scaled[k][2]=vertices[k][2]*(sz*0.1f);
-  scaled[k][3]=vertices[k][3];
+ MATRIX lw,wv,ls; int i,validTriangles=0;
+ VECTOR scaled[24];
+ for(i=0;i<vertex_count;i++) {
+  /* Mesh vertices are authored at +/-10 units; convert requested half-extents. */
+  scaled[i][0]=vertices[i][0]*(sx*0.1f);
+  scaled[i][1]=vertices[i][1]*(sy*0.1f);
+  scaled[i][2]=vertices[i][2]*(sz*0.1f);
+  scaled[i][3]=vertices[i][3];
  }
  create_local_world(lw,pos,rot);
  create_world_view(wv,cameraPos,cameraRot);
  create_local_screen(ls,lw,wv,viewScreen);
  calculate_vertices(tmp,vertex_count,scaled,ls);
+
+ /* PS2SDK calculate_vertices marks an out-of-frustum vertex by replacing it
+    with (0,0,0). Never submit a triangle containing such a vertex: doing so
+    connects the clipped corner to the screen origin and creates long spikes. */
+ for(i=0;i<points_count;i+=3) {
+  int a=points[i],b=points[i+1],c=points[i+2];
+  int ca=(fabsf(tmp[a][0])<0.00001f && fabsf(tmp[a][1])<0.00001f && fabsf(tmp[a][2])<0.00001f);
+  int cb=(fabsf(tmp[b][0])<0.00001f && fabsf(tmp[b][1])<0.00001f && fabsf(tmp[b][2])<0.00001f);
+  int cc=(fabsf(tmp[c][0])<0.00001f && fabsf(tmp[c][1])<0.00001f && fabsf(tmp[c][2])<0.00001f);
+  if(!ca && !cb && !cc) validTriangles++;
+ }
+ if(validTriangles==0) return q;
+
  draw_convert_xyz(xyz,2048,2048,32,vertex_count,(vertex_f_t*)tmp);
- { color_f_t c[24]; for(i=0;i<24;i++){ c[i].r=cr/255.0f; c[i].g=cg/255.0f; c[i].b=cb/255.0f; c[i].a=1.0f; } 
-   draw_convert_rgbq(rgbaq,vertex_count,(vertex_f_t*)tmp,c,0x80); }
+ { color_f_t colours[24];
+   for(i=0;i<vertex_count;i++) {
+    colours[i].r=cr/255.0f; colours[i].g=cg/255.0f;
+    colours[i].b=cb/255.0f; colours[i].a=1.0f;
+   }
+   draw_convert_rgbq(rgbaq,vertex_count,(vertex_f_t*)tmp,colours,0x80);
+ }
  q=draw_prim_start(q,0,prim,base);
- for(i=0;i<points_count;i++){ q->dw[0]=rgbaq[points[i]].rgbaq; q->dw[1]=xyz[points[i]].xyz; q++; }
- /* qword alignment handled by primitive end */
+ for(i=0;i<points_count;i+=3) {
+  int a=points[i],b=points[i+1],c=points[i+2];
+  int ca=(fabsf(tmp[a][0])<0.00001f && fabsf(tmp[a][1])<0.00001f && fabsf(tmp[a][2])<0.00001f);
+  int cb=(fabsf(tmp[b][0])<0.00001f && fabsf(tmp[b][1])<0.00001f && fabsf(tmp[b][2])<0.00001f);
+  int cc=(fabsf(tmp[c][0])<0.00001f && fabsf(tmp[c][1])<0.00001f && fabsf(tmp[c][2])<0.00001f);
+  if(ca || cb || cc) continue;
+  q->dw[0]=rgbaq[a].rgbaq; q->dw[1]=xyz[a].xyz; q++;
+  q->dw[0]=rgbaq[b].rgbaq; q->dw[1]=xyz[b].xyz; q++;
+  q->dw[0]=rgbaq[c].rgbaq; q->dw[1]=xyz[c].xyz; q++;
+ }
  q=draw_prim_end(q,2,DRAW_RGBAQ_REGLIST);
  return q;
 }

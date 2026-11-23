@@ -41,8 +41,8 @@ static int nxTraffic[4];
 static int nxPedestrians[4];
 static const float missionTargets[30]={-70.0f,-145.0f,-220.0f,-295.0f,-370.0f,-445.0f,-520.0f,-595.0f,-670.0f,-745.0f,-820.0f,-895.0f,-970.0f,-1045.0f,-1120.0f,-1195.0f,-1270.0f,-1345.0f,-1420.0f,-1495.0f,-1570.0f,-1645.0f,-1720.0f,-1795.0f,-1870.0f,-1945.0f,-2020.0f,-2095.0f,-2170.0f,-2245.0f};
 static float px=0.0f, pz=0.0f, heading=0.0f;
-static float cameraYaw=0.0f, cameraPitch=0.30f, cameraDistance=32.0f;
-static VECTOR cameraPos={0.0f,28.0f,100.0f,1.0f};
+static float cameraYaw=0.0f, cameraPitch=0.28f, cameraDistance=26.0f;
+static VECTOR cameraPos={-29.0f,8.0f,26.0f,1.0f};
 static VECTOR cameraRot={0.0f,0.0f,0.0f,1.0f};
 static VECTOR objPos={0.0f,0.0f,0.0f,1.0f};
 static VECTOR objRot={0.0f,0.0f,0.0f,1.0f};
@@ -293,8 +293,8 @@ static void updatePad(void) {
   if(padConnected && (rx>0.22f || rx< -0.22f)) cameraYaw-=rx*0.018f;
   if(padConnected && (ry>0.22f || ry< -0.22f)) {
    cameraPitch-=ry*0.007f;
-   if(cameraPitch<0.08f) cameraPitch=0.08f;
-   if(cameraPitch>1.48f) cameraPitch=1.48f;
+   if(cameraPitch<0.12f) cameraPitch=0.12f;
+   if(cameraPitch>0.78f) cameraPitch=0.78f;
   }
   if(padConnected && !(pad.btns & PAD_L1)) cameraYaw-=0.022f;
   if(padConnected && !(pad.btns & PAD_R1)) cameraYaw+=0.022f;
@@ -408,9 +408,9 @@ static void render(void) {
  nx_camera_follow(&nxCamera,&nxScene.entities[nxPlayer],1.0f/60.0f);
  /* Keep the camera behind the player while allowing right-stick orbit. */
  { float cy=cameraYaw+(inCar?carHeading:0.0f);
-  float tx=px+sinf(cy)*cameraDistance, ty=cameraPitch*cameraDistance+5.0f, tz=pz+cosf(cy)*cameraDistance;
+  float tx=px+sinf(cy)*cameraDistance, ty=1.0f+sinf(cameraPitch)*cameraDistance, tz=pz+cosf(cy)*cameraDistance;
   cameraPos[0]+=(tx-cameraPos[0])*0.16f; cameraPos[1]+=(ty-cameraPos[1])*0.20f; cameraPos[2]+=(tz-cameraPos[2])*0.20f;
-  cameraRot[0]=cameraPitch; cameraRot[1]=cy; cameraRot[2]=0.0f; }
+  cameraRot[0]=-cameraPitch; cameraRot[1]=cy; cameraRot[2]=0.0f; }
  tag=packets[ctx]->data; q=tag+1;
  q=draw_disable_tests(q,0,&zbuf);
  { int sr=weatherType==3?72:(weatherType==4?145:(weatherType==2?112:90)); int sg=weatherType==3?88:(weatherType==4?155:(weatherType==2?112:135)); int sb=weatherType==3?105:(weatherType==4?175:(weatherType==2?112:165)); q=draw_clear(q,0,2048-SW/2,2048-SH/2,SW,SH,(int)(sr*daylight),(int)(sg*daylight),(int)(sb*(0.75f+daylight*0.25f))); }

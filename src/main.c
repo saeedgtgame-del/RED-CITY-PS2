@@ -38,7 +38,7 @@ static int nxPlayer=-1;
 static float gameMinute=480.0f, daylight=0.81f, weatherTimer=0.0f, windStrength=0.18f, windTarget=0.18f, gustTimer=0.0f, dustPhase=0.0f;
 static unsigned int weatherSeed=0x51A7u;
 static int weatherType=0;
-static int nxTraffic[4];
+static int nxTraffic[5];
 static int nxPedestrians[4];
 static const float missionTargets[15]={-70.0f,-145.0f,-220.0f,-295.0f,-370.0f,-445.0f,-520.0f,-595.0f,-670.0f,-745.0f,-820.0f,-895.0f,-970.0f,-1045.0f,-1120.0f};
 static float px=0.0f, pz=0.0f, heading=0.0f;
@@ -171,6 +171,11 @@ static void initNexonGame(void) {
   nxScene.entities[nxPedestrians[i]].radius=1.25f;
   nxScene.entities[nxPedestrians[i]].velocity.x=(i&1)?-1.5f:1.5f;
  }
+ /* Fifth traffic entity is a patrol car with a slower city巡回 route. */
+ p.x=0.0f; p.y=-5.0f; p.z=-285.0f;
+ nxTraffic[4]=nx_spawn(&nxScene,NX_ENTITY_VEHICLE,p);
+ nxScene.entities[nxTraffic[4]].radius=3.8f;
+ nxScene.entities[nxTraffic[4]].velocity.z=9.0f;
  memset(&nxClock,0,sizeof(nxClock));
 }
 static unsigned int worldRand(void) { weatherSeed=weatherSeed*1664525u+1013904223u; return weatherSeed; }
@@ -185,7 +190,7 @@ static void updateWorld(void) {
  gustTimer-=dt; if(gustTimer<=0.0f) { windTarget=0.08f+(float)(worldRand()%1000u)/1000.0f*1.45f; gustTimer=5.0f+(float)(worldRand()%1200u)/100.0f; }
  windStrength+=(windTarget-windStrength)*0.008f; dustPhase+=dt*(1.0f+windStrength*4.0f);
  weatherTimer+=dt; if(weatherTimer>600.0f+(float)(worldRand()%1200u)) { int n=(int)(worldRand()%5u); if(n==weatherType)n=(n+1+(int)(worldRand()%4u))%5; weatherType=n; weatherTimer=0.0f; }
- for(i=0;i<4;i++) {
+ for(i=0;i<5;i++) {
   e=&nxScene.entities[nxTraffic[i]];
   e->transform.position.z+=e->velocity.z*nxClock.deltaTime;
   if(e->transform.position.z>22.0f) e->transform.position.z=-820.0f-(float)i*24.0f;
@@ -202,7 +207,7 @@ static void updateWorld(void) {
 static void resolvePlayerContacts(NX_Entity *player) {
  int i;
  if(!player || !player->active) return;
- for(i=0;i<4;i++) {
+ for(i=0;i<5;i++) {
   NX_Entity *other=&nxScene.entities[nxTraffic[i]];
   float dx=player->transform.position.x-other->transform.position.x;
   float dz=player->transform.position.z-other->transform.position.z;
@@ -580,6 +585,23 @@ static void render(void) {
    p[0]=-49; p[1]=-11; q=drawCube(q,viewScreen,p,r,4,1,925,105,105,110,tmp,xyz,rgbaq,&prim,&base);
    p[0]=49; q=drawCube(q,viewScreen,p,r,4,1,925,105,105,110,tmp,xyz,rgbaq,&prim,&base);
  }
+ /* Non-grid city connections: angled cross streets and a curved bypass. */
+ { int s; for(s=0;s<4;s++) {
+    VECTOR cross={0.0f,-12.0f,-125.0f-(float)s*205.0f,1};
+    VECTOR cr={0.0f,(s&1)?0.16f:-0.11f,0.0f,1};
+    q=drawCube(q,viewScreen,cross,cr,96.0f,0.85f,13.0f,49,53,59,tmp,xyz,rgbaq,&prim,&base);
+    cross[1]=-11.35f; cross[0]=-47.0f;
+    q=drawCube(q,viewScreen,cross,cr,3.0f,0.55f,13.0f,128,126,116,tmp,xyz,rgbaq,&prim,&base);
+    cross[0]=47.0f;
+    q=drawCube(q,viewScreen,cross,cr,3.0f,0.55f,13.0f,128,126,116,tmp,xyz,rgbaq,&prim,&base);
+  }
+  /* A staggered diagonal avenue breaks the parallel street pattern. */
+  for(s=0;s<5;s++) {
+    VECTOR bend={-34.0f+(float)s*16.0f,-12.0f,-80.0f-(float)s*155.0f,1};
+    VECTOR br={0.0f,0.28f,0.0f,1};
+    q=drawCube(q,viewScreen,bend,br,42.0f,0.75f,8.0f,55,58,64,tmp,xyz,rgbaq,&prim,&base);
+  }
+ }
  /* raised sidewalks and curbs make the road read as a real street */
  { VECTOR p={-49.0f,-11.6f,-455.0f,1},r={0,0,0,1};
    q=drawCube(q,viewScreen,p,r,3.0f,0.7f,465.0f,125,125,118,tmp,xyz,rgbaq,&prim,&base);
@@ -686,11 +708,21 @@ static void render(void) {
   wp[1]=24.0f; q=drawCube(q,viewScreen,wp,wr,4.0f,1.0f,4.0f,255,220,75,tmp,xyz,rgbaq,&prim,&base);
  }
  /* Moving traffic vehicles and walking pedestrians are engine entities. */
- for(i=0;i<4;i++) {
+ for(i=0;i<5;i++) {
   NX_Entity *v=&nxScene.entities[nxTraffic[i]];
   VECTOR vp={v->transform.position.x,-5.0f,v->transform.position.z,1},vr={0,0,0,1};
   vp[1]=-10.1f;
-  q=drawCube(q,viewScreen,vp,vr,4.0f,1.8f,7.0f,(i&1)?175:35,(i&1)?35:95,(i&1)?35:165,tmp,xyz,rgbaq,&prim,&base);
+  q=drawCube(q,viewScreen,vp,vr,4.0f,1.8f,7.0f,i==4?225:((i&1)?175:35),i==4?230:((i&1)?35:95),i==4?235:((i&1)?35:165),tmp,xyz,rgbaq,&prim,&base);
+  if(i==4) {
+   VECTOR stripe={v->transform.position.x,-9.0f,v->transform.position.z,1};
+   q=drawCube(q,viewScreen,stripe,vr,4.08f,0.45f,2.0f,25,55,95,tmp,xyz,rgbaq,&prim,&base);
+   stripe[1]=-6.65f; stripe[2]=v->transform.position.z;
+   q=drawCube(q,viewScreen,stripe,vr,1.8f,0.32f,0.65f,35,40,48,tmp,xyz,rgbaq,&prim,&base);
+   stripe[0]=v->transform.position.x-1.0f;
+   q=drawCube(q,viewScreen,stripe,vr,0.55f,0.42f,0.38f,((int)(nxClock.elapsed*7.0f)&1)?245:35,35,245,tmp,xyz,rgbaq,&prim,&base);
+   stripe[0]=v->transform.position.x+1.0f;
+   q=drawCube(q,viewScreen,stripe,vr,0.55f,0.42f,0.38f,35,90,245,((int)(nxClock.elapsed*7.0f)&1)?245:35,tmp,xyz,rgbaq,&prim,&base);
+  }
   vp[1]=-7.9f;
   q=drawCube(q,viewScreen,vp,vr,3.0f,1.0f,3.8f,85,145,175,tmp,xyz,rgbaq,&prim,&base);
   /* Roof, front/rear glass, bumpers and grille give each vehicle a silhouette. */

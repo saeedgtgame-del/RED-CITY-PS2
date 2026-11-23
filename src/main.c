@@ -668,6 +668,19 @@ static void render(void) {
    { int shirtR[4]={34,145,48,175},shirtG[4]={36,65,125,105},shirtB[4]={43,75,75,55};
      /* NPC 0 is Alex: dark jacket; the remaining pedestrians keep varied outfits. */
      q=drawCube(q,viewScreen,np,vr,1.5f,3.0f,1.5f,shirtR[i],shirtG[i],shirtB[i],tmp,xyz,rgbaq,&prim,&base);
+     /* Layered collars, shoulder panels, shirt fronts and waist details. */
+     { VECTOR cloth; memcpy(cloth,np,sizeof(VECTOR));
+       cloth[1]=-3.65f; cloth[2]=n->transform.position.z+1.35f;
+       q=drawCube(q,viewScreen,cloth,vr,0.82f,0.42f,0.18f,205,195,175,tmp,xyz,rgbaq,&prim,&base);
+       cloth[1]=-4.25f; cloth[2]=n->transform.position.z+1.55f;
+       q=drawCube(q,viewScreen,cloth,vr,0.12f,1.15f,0.10f,105,110,118,tmp,xyz,rgbaq,&prim,&base);
+       cloth[1]=-6.55f; cloth[2]=n->transform.position.z+1.25f;
+       q=drawCube(q,viewScreen,cloth,vr,1.35f,0.18f,0.12f,35,35,40,tmp,xyz,rgbaq,&prim,&base);
+       cloth[1]=-2.55f; cloth[0]=n->transform.position.x-1.18f;
+       q=drawCube(q,viewScreen,cloth,vr,0.28f,0.65f,0.18f,shirtR[i]/2,shirtG[i]/2,shirtB[i]/2,tmp,xyz,rgbaq,&prim,&base);
+       cloth[0]=n->transform.position.x+1.18f;
+       q=drawCube(q,viewScreen,cloth,vr,0.28f,0.65f,0.18f,shirtR[i]/2,shirtG[i]/2,shirtB[i]/2,tmp,xyz,rgbaq,&prim,&base);
+     }
      if(i==0) {
        VECTOR lapel; memcpy(lapel,np,sizeof(VECTOR)); lapel[1]=-4.4f; lapel[2]=n->transform.position.z+1.45f;
        q=drawCube(q,viewScreen,lapel,vr,0.24f,1.4f,0.12f,105,105,110,tmp,xyz,rgbaq,&prim,&base);

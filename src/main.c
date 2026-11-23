@@ -499,7 +499,7 @@ static void render(void) {
   dz=targetZ-cameraPos[2];
   /* Camera's local forward axis is -Z. These signs are essential:
      positive pitch/yaw here used to point away from the character. */
-  cameraRot[0]=atan2f(-dy,sqrtf(dx*dx+dz*dz));
+  cameraRot[0]=atan2f(dy,sqrtf(dx*dx+dz*dz));
   cameraRot[1]=atan2f(-dx,-dz);
   cameraRot[2]=0.0f;
  }

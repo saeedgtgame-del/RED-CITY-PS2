@@ -43,6 +43,7 @@ static int nxPedestrians[4];
 static const float missionTargets[30]={-70.0f,-145.0f,-220.0f,-295.0f,-370.0f,-445.0f,-520.0f,-595.0f,-670.0f,-745.0f,-820.0f,-895.0f,-970.0f,-1045.0f,-1120.0f,-1195.0f,-1270.0f,-1345.0f,-1420.0f,-1495.0f,-1570.0f,-1645.0f,-1720.0f,-1795.0f,-1870.0f,-1945.0f,-2020.0f,-2095.0f,-2170.0f,-2245.0f};
 static float px=0.0f, pz=0.0f, heading=0.0f;
 static float cameraYaw=0.0f, cameraPitch=0.35f, cameraDistance=8.0f;
+static int cameraReady=0;
 static VECTOR cameraPos={-29.0f,5.5f,-14.0f,1.0f};
 static VECTOR cameraRot={0.0f,0.0f,0.0f,1.0f};
 static VECTOR objPos={0.0f,0.0f,0.0f,1.0f};
@@ -374,7 +375,7 @@ static void updatePad(void) {
       }
     }
     nx_update_player(&nxScene,&in,1.0f/60.0f);
-    if(!(pad.btns & PAD_CIRCLE)) { player->transform.position.x=-29.0f; player->transform.position.z=0.0f; player->transform.rotation.y=0.0f; cameraYaw=0.0f; cameraPitch=0.30f; mission=0; }
+    if(!(pad.btns & PAD_CIRCLE)) { player->transform.position.x=-29.0f; player->transform.position.z=0.0f; player->transform.rotation.y=0.0f; cameraYaw=0.0f; cameraPitch=0.30f; cameraReady=0; mission=0; }
     if(player->transform.position.x < -52.0f) player->transform.position.x=-52.0f;
     if(player->transform.position.x > 52.0f) player->transform.position.x=52.0f;
     resolvePlayerContacts(player);
@@ -452,36 +453,40 @@ static void render(void) {
   base.r=128;base.g=128;base.b=128;base.a=128;base.q=1.0f;
   create_view_screen(viewScreen,graph_aspect_ratio(),-3.0f,3.0f,-2.2f,2.2f,5.0f,2000.0f);
  }
- /* GTA-style independent follow camera: follow the live player/vehicle,
-    keep a close rear view, and calculate the exact look-at angles each frame.
-    The PS2SDK world-view matrix expects camera WORLD rotation, not view rotation. */
+ /* Third-person follow camera.
+    PS2SDK create_world_view() internally negates camera translation and
+    rotation. Camera position is placed BEHIND the character's -Z-forward
+    direction, and camera world rotation points back toward the target. */
  { NX_Entity *follow=inCar?&nxScene.entities[playerVehicle]:&nxScene.entities[nxPlayer];
   float targetX=follow->transform.position.x;
   float targetZ=follow->transform.position.z;
-  float targetY=follow->transform.position.y+(inCar?1.4f:1.65f);
+  float targetY=follow->transform.position.y+(inCar?1.35f:1.55f);
   float targetHeading=inCar?carHeading:follow->transform.rotation.y;
   float cy=targetHeading+cameraYaw;
-  float dist=inCar?11.0f:8.0f;
-  float height=inCar?4.6f:3.7f;
-  float followH=inCar?0.18f:0.24f;
+  float dist=inCar?11.0f:cameraDistance;
+  float desiredHeight=dist*tanf(cameraPitch);
   float tx=targetX-sinf(cy)*dist;
-  float ty=targetY+height;
-  float tz=targetZ-cosf(cy)*dist;
-  float dx,dy,dz,horizontal;
+  float ty=targetY+desiredHeight;
+  float tz=targetZ+cosf(cy)*dist;
+  float dx=targetX-tx;
+  float dy=targetY-ty;
+  float dz=targetZ-tz;
   px=targetX; pz=targetZ; heading=targetHeading;
-  cameraPos[0]+=(tx-cameraPos[0])*followH;
-  cameraPos[1]+=(ty-cameraPos[1])*(inCar?0.16f:0.20f);
-  cameraPos[2]+=(tz-cameraPos[2])*followH;
-  /* Derive yaw/pitch from camera-to-target vector so the lens always points
-     at Sophia's upper body instead of relying on a guessed fixed pitch. */
+  if(!cameraReady) {
+   cameraPos[0]=tx; cameraPos[1]=ty; cameraPos[2]=tz; cameraReady=1;
+  } else {
+   cameraPos[0]+=(tx-cameraPos[0])*0.34f;
+   cameraPos[1]+=(ty-cameraPos[1])*0.30f;
+   cameraPos[2]+=(tz-cameraPos[2])*0.34f;
+  }
   dx=targetX-cameraPos[0];
   dy=targetY-cameraPos[1];
   dz=targetZ-cameraPos[2];
-  horizontal=sqrtf(dx*dx+dz*dz);
-  cameraRot[0]=atan2f(-dy,horizontal);
-  cameraRot[1]=atan2f(dx,dz);
+  /* Camera's local forward axis is -Z. These signs are essential:
+     positive pitch/yaw here used to point away from the character. */
+  cameraRot[0]=atan2f(dy,sqrtf(dx*dx+dz*dz));
+  cameraRot[1]=atan2f(-dx,-dz);
   cameraRot[2]=0.0f;
-  cameraPitch=cameraRot[0];
  }
  tag=packets[ctx]->data; q=tag+1;
  q=draw_disable_tests(q,0,&zbuf);

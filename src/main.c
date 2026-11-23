@@ -20,6 +20,8 @@
 #define SW 640
 #define SH 512
 #define OBJECTS 15
+/* Each cube emits 36 vertices plus GIF setup; the full city can exceed 65k qwords. */
+#define RENDER_PACKET_QWORDS 131072
 
 static framebuffer_t frame;
 static zbuffer_t zbuf;
@@ -42,7 +44,7 @@ static int nxTraffic[5];
 static int nxPedestrians[4];
 static const float missionTargets[15]={-70.0f,-145.0f,-220.0f,-295.0f,-370.0f,-445.0f,-520.0f,-595.0f,-670.0f,-745.0f,-820.0f,-895.0f,-970.0f,-1045.0f,-1120.0f};
 static float px=0.0f, pz=0.0f, heading=0.0f;
-static float cameraYaw=0.0f, cameraPitch=0.28f, cameraDistance=24.0f;
+static float cameraYaw=0.0f, cameraPitch=0.28f, cameraDistance=12.0f;
 static int cameraReady=0;
 static VECTOR cameraPos={-29.0f,5.5f,-14.0f,1.0f};
 static VECTOR cameraRot={0.0f,0.0f,0.0f,1.0f};
@@ -457,7 +459,7 @@ static void render(void) {
  static prim_t prim; static color_t base; static MATRIX viewScreen;
  qword_t *q,*tag; int i;
  if(!packets[0]) {
-  packets[0]=packet_init(65536,PACKET_NORMAL); packets[1]=packet_init(65536,PACKET_NORMAL);
+  packets[0]=packet_init(RENDER_PACKET_QWORDS,PACKET_NORMAL); packets[1]=packet_init(RENDER_PACKET_QWORDS,PACKET_NORMAL);
   tmp=memalign(128,sizeof(VECTOR)*MAX_CLIPPED_VERTICES); xyz=memalign(128,sizeof(xyz_t)*MAX_CLIPPED_VERTICES);
   rgbaq=memalign(128,sizeof(color_t)*MAX_CLIPPED_VERTICES);
   prim.type=PRIM_TRIANGLE; prim.shading=PRIM_SHADE_GOURAUD; prim.mapping=DRAW_DISABLE;
@@ -476,7 +478,7 @@ static void render(void) {
   float targetY=follow->transform.position.y+(inCar?1.65f:0.45f);
   float targetHeading=inCar?carHeading:follow->transform.rotation.y;
   float cy=targetHeading+cameraYaw;
-  float dist=inCar?19.0f:cameraDistance;
+  float dist=inCar?17.0f:cameraDistance;
   float desiredHeight=dist*tanf(cameraPitch);
   float tx=targetX-sinf(cy)*dist;
   float ty=targetY+desiredHeight;

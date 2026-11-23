@@ -42,7 +42,7 @@ static int nxTraffic[5];
 static int nxPedestrians[4];
 static const float missionTargets[15]={-70.0f,-145.0f,-220.0f,-295.0f,-370.0f,-445.0f,-520.0f,-595.0f,-670.0f,-745.0f,-820.0f,-895.0f,-970.0f,-1045.0f,-1120.0f};
 static float px=0.0f, pz=0.0f, heading=0.0f;
-static float cameraYaw=0.0f, cameraPitch=0.35f, cameraDistance=8.0f;
+static float cameraYaw=0.0f, cameraPitch=0.28f, cameraDistance=24.0f;
 static int cameraReady=0;
 static VECTOR cameraPos={-29.0f,5.5f,-14.0f,1.0f};
 static VECTOR cameraRot={0.0f,0.0f,0.0f,1.0f};
@@ -302,14 +302,15 @@ static void updatePad(void) {
   if(!(pad.btns & PAD_UP))    in.moveZ=-1.0f;
   if(!(pad.btns & PAD_DOWN))  in.moveZ=1.0f;
   /* Right stick and shoulder buttons orbit the third-person camera. */
-  if(padConnected && (rx>0.22f || rx< -0.22f)) cameraYaw-=rx*0.018f;
-  if(padConnected && (ry>0.22f || ry< -0.22f)) {
-   cameraPitch-=ry*0.007f;
-   if(cameraPitch<0.12f) cameraPitch=0.12f;
-   if(cameraPitch>0.78f) cameraPitch=0.78f;
+  /* Firm dead-zone and slower orbit prevent tiny stick noise from spinning the view. */
+  if(padConnected && (rx>0.35f || rx< -0.35f)) cameraYaw+=rx*0.0045f;
+  if(padConnected && (ry>0.35f || ry< -0.35f)) {
+   cameraPitch+=ry*0.0025f;
+   if(cameraPitch<0.18f) cameraPitch=0.18f;
+   if(cameraPitch>0.58f) cameraPitch=0.58f;
   }
-  if(padConnected && !(pad.btns & PAD_L1)) cameraYaw-=0.022f;
-  if(padConnected && !(pad.btns & PAD_R1)) cameraYaw+=0.022f;
+  if(padConnected && !(pad.btns & PAD_L1)) cameraYaw-=0.008f;
+  if(padConnected && !(pad.btns & PAD_R1)) cameraYaw+=0.008f;
   if(!(pad.btns & PAD_L2)) in.turn=-1.0f;
   if(!(pad.btns & PAD_R2)) in.turn=1.0f;
   if(!(pad.btns & PAD_CROSS)) in.held=1; /* Cross = sprint */
@@ -472,10 +473,10 @@ static void render(void) {
  { NX_Entity *follow=inCar?&nxScene.entities[playerVehicle]:&nxScene.entities[nxPlayer];
   float targetX=follow->transform.position.x;
   float targetZ=follow->transform.position.z;
-  float targetY=follow->transform.position.y+(inCar?1.35f:1.55f);
+  float targetY=follow->transform.position.y+(inCar?1.65f:0.45f);
   float targetHeading=inCar?carHeading:follow->transform.rotation.y;
   float cy=targetHeading+cameraYaw;
-  float dist=inCar?11.0f:cameraDistance;
+  float dist=inCar?19.0f:cameraDistance;
   float desiredHeight=dist*tanf(cameraPitch);
   float tx=targetX-sinf(cy)*dist;
   float ty=targetY+desiredHeight;
@@ -487,9 +488,9 @@ static void render(void) {
   if(!cameraReady) {
    cameraPos[0]=tx; cameraPos[1]=ty; cameraPos[2]=tz; cameraReady=1;
   } else {
-   cameraPos[0]+=(tx-cameraPos[0])*0.34f;
-   cameraPos[1]+=(ty-cameraPos[1])*0.30f;
-   cameraPos[2]+=(tz-cameraPos[2])*0.34f;
+   cameraPos[0]+=(tx-cameraPos[0])*0.16f;
+   cameraPos[1]+=(ty-cameraPos[1])*0.16f;
+   cameraPos[2]+=(tz-cameraPos[2])*0.16f;
   }
   dx=targetX-cameraPos[0];
   dy=targetY-cameraPos[1];
@@ -722,6 +723,7 @@ static void render(void) {
    lamp[0]=v->transform.position.x+2.3f;
    q=drawCube(q,viewScreen,lamp,vr,0.45f,0.45f,0.3f,255,225,145,tmp,xyz,rgbaq,&prim,&base);
   }
+  if(i<4) {
   {
    NX_Entity *n=&nxScene.entities[nxPedestrians[i]];
    VECTOR np={n->transform.position.x,-5.2f,n->transform.position.z,1};
@@ -778,6 +780,7 @@ static void render(void) {
      f[0]=n->transform.position.x+0.42f;
      q=drawCube(q,viewScreen,f,vr,0.30f,0.10f,0.10f,42,30,28,tmp,xyz,rgbaq,&prim,&base);
    }
+  }
   }
  }
  /* Soft contact shadow under Sophia makes her feet read against the asphalt. */

@@ -41,8 +41,8 @@ static int nxTraffic[4];
 static int nxPedestrians[4];
 static const float missionTargets[30]={-70.0f,-145.0f,-220.0f,-295.0f,-370.0f,-445.0f,-520.0f,-595.0f,-670.0f,-745.0f,-820.0f,-895.0f,-970.0f,-1045.0f,-1120.0f,-1195.0f,-1270.0f,-1345.0f,-1420.0f,-1495.0f,-1570.0f,-1645.0f,-1720.0f,-1795.0f,-1870.0f,-1945.0f,-2020.0f,-2095.0f,-2170.0f,-2245.0f};
 static float px=0.0f, pz=0.0f, heading=0.0f;
-static float cameraYaw=0.0f, cameraPitch=0.32f, cameraDistance=19.0f;
-static VECTOR cameraPos={-29.0f,8.0f,26.0f,1.0f};
+static float cameraYaw=0.0f, cameraPitch=0.30f, cameraDistance=14.0f;
+static VECTOR cameraPos={-29.0f,5.5f,-14.0f,1.0f};
 static VECTOR cameraRot={0.0f,0.0f,0.0f,1.0f};
 static VECTOR objPos={0.0f,0.0f,0.0f,1.0f};
 static VECTOR objRot={0.0f,0.0f,0.0f,1.0f};
@@ -433,11 +433,19 @@ static void render(void) {
  }
  nx_camera_follow(&nxCamera,&nxScene.entities[nxPlayer],1.0f/60.0f);
  /* Keep the camera behind the player while allowing right-stick orbit. */
- { float cy=cameraYaw+(inCar?carHeading:0.0f);
-  float tx=px+sinf(cy)*cameraDistance, ty=1.0f+sinf(cameraPitch)*cameraDistance, tz=pz+cosf(cy)*cameraDistance;
-  cameraPos[0]+=(tx-cameraPos[0])*0.16f; cameraPos[1]+=(ty-cameraPos[1])*0.20f; cameraPos[2]+=(tz-cameraPos[2])*0.20f;
-  /* create_world_view uses the inverse camera rotation: positive X pitch makes the view look downward toward the player. */
-  cameraRot[0]=cameraPitch; cameraRot[1]=cy; cameraRot[2]=0.0f; }
+ { float cy=cameraYaw+(inCar?carHeading:nxScene.entities[nxPlayer].transform.rotation.y);
+  /* Place the camera on the character's rear hemisphere, not in front of her.
+     At heading zero Sophia faces +Z, so her rear is -Z. */
+  float tx=px-sinf(cy)*cameraDistance;
+  float ty=5.5f;
+  float tz=pz-cosf(cy)*cameraDistance;
+  cameraPos[0]+=(tx-cameraPos[0])*0.24f;
+  cameraPos[1]+=(ty-cameraPos[1])*0.24f;
+  cameraPos[2]+=(tz-cameraPos[2])*0.24f;
+  /* Turn the view back toward Sophia from the rear camera position. */
+  cameraRot[0]=cameraPitch;
+  cameraRot[1]=cy+3.14159265f;
+  cameraRot[2]=0.0f; }
  tag=packets[ctx]->data; q=tag+1;
  q=draw_disable_tests(q,0,&zbuf);
  { int sr=weatherType==3?72:(weatherType==4?145:(weatherType==2?112:90)); int sg=weatherType==3?88:(weatherType==4?155:(weatherType==2?112:135)); int sb=weatherType==3?105:(weatherType==4?175:(weatherType==2?112:165)); q=draw_clear(q,0,2048-SW/2,2048-SH/2,SW,SH,(int)(sr*daylight),(int)(sg*daylight),(int)(sb*(0.75f+daylight*0.25f))); }

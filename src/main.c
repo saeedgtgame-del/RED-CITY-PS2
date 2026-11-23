@@ -932,10 +932,9 @@ static void render(void) {
  /* Full HUD: minimap bottom-left, health directly underneath. */
  q=draw_disable_tests(q,0,&zbuf);
  q=rect(q,12,12,250,34,10,15,24);
- q=rect(q,20,20,12,18,padConnected?45:220,padConnected?220:45,55);
- q=drawText(q,42,19,1,"RED CITY",235,235,240);
+ q=drawText(q,20,19,1,"RED CITY",235,235,240);
  { int hh=(int)(gameMinute/60.0f),mm=(int)gameMinute%60; char tm[5]; tm[0]='0'+hh/10; tm[1]='0'+hh%10; tm[2]='0'+mm/10; tm[3]='0'+mm%10; tm[4]=0; q=drawText(q,42,SH-172,1,tm,245,235,180); }
- q=drawText(q,145,19,1,padConnected?"PAD OK":"NO PAD",padConnected?90:245,padConnected?225:85,padConnected?130:85);
+ /* Controller connection status intentionally hidden from HUD. */
  { const char *w=weatherType==0?"CLEAR":weatherType==1?"CLOUDY":weatherType==2?"POLLUTED":weatherType==3?"RAIN":"SNOW"; q=drawText(q,SW-105,19,1,w,210,210,190); }
  q=rect(q,SW/2-118,12,236,34,10,15,24);
  if(mission<30) { char ms[24]="MISSION 01/15 - MARKER"; ms[8]=(char)('0'+(mission+1)/10); ms[9]=(char)('0'+(mission+1)%10); q=drawText(q,SW/2-108,19,1,ms,245,210,105); }
@@ -967,7 +966,7 @@ static void render(void) {
  if(inCar) { q=rect(q,SW/2-55,SH-72,110,18,10,15,24); q=drawText(q,SW/2-45,SH-67,1,"SPEED",245,220,120); { int sp=(int)fabsf(carSpeed); if(sp>34)sp=34; q=rect(q,SW/2+2,SH-65,sp,6,210,45,50); } }
  if(phoneVisible) {
   /* Keep the entire phone inside a conservative TV-safe area (overscan-safe). */
-  int phoneW=176,phoneH=300;
+  int phoneW=150,phoneH=260;
   int pxp=(SW-phoneW)/2,py=(SH-phoneH)/2;
   q=rect(q,pxp-4,py-4,phoneW+8,phoneH+8,3,4,7);
   q=rect(q,pxp,py,phoneW,phoneH,18,22,30);
@@ -979,19 +978,19 @@ static void render(void) {
     { const char *apps[4]={"CONTACTS","MESSAGES","CITY MAP","SETTINGS"};
       int k; for(k=0;k<4;k++) {
         int ay=py+108+k*47;
-        q=rect(q,pxp+12,ay,166,38,(k==phoneSelection)?110:43,(k==phoneSelection)?35:50,(k==phoneSelection)?48:62);
-        q=rect(q,pxp+20,ay+7,22,22,(k==0)?70:(k==1)?65:(k==2)?55:90,(k==0)?145:(k==1)?105:(k==2)?130:95,(k==0)?205:(k==1)?155:(k==2)?95:125);
-        q=drawText(q,pxp+50,ay+15,1,apps[k],235,235,235);
+        q=rect(q,pxp+10,ay,130,34,(k==phoneSelection)?110:43,(k==phoneSelection)?35:50,(k==phoneSelection)?48:62);
+        q=rect(q,pxp+16,ay+6,20,20,(k==0)?70:(k==1)?65:(k==2)?55:90,(k==0)?145:(k==1)?105:(k==2)?130:95,(k==0)?205:(k==1)?155:(k==2)?95:125);
+        q=drawText(q,pxp+42,ay+13,1,apps[k],235,235,235);
       }
     }
-    q=drawText(q,pxp+12,py+278,1,"UP DOWN X O",175,190,205);
+    q=drawText(q,pxp+10,py+240,1,"UP DOWN X O",175,190,205);
   } else if(phonePage==1) {
     q=drawText(q,pxp+14,py+80,2,"CONTACTS",245,225,170);
     q=drawText(q,pxp+14,py+125,1,"JACK - GARAGE",225,230,235);
     q=drawText(q,pxp+14,py+160,1,"ALEX MORGAN",225,230,235);
     q=drawText(q,pxp+14,py+195,1,"MARCUS",225,230,235);
     q=drawText(q,pxp+14,py+230,1,"VICTOR CROSS",225,230,235);
-    q=drawText(q,pxp+12,py+278,1,"O BACK",175,190,205);
+    q=drawText(q,pxp+10,py+240,1,"O BACK",175,190,205);
   } else if(phonePage==2) {
     q=drawText(q,pxp+14,py+80,2,"MESSAGES",245,225,170);
     q=drawText(q,pxp+14,py+125,1,"JACK: CALL ME",225,230,235);
@@ -1003,7 +1002,7 @@ static void render(void) {
     q=drawText(q,pxp+14,py+125,1,"SOUND - GAME DEFAULT",225,230,235);
     q=drawText(q,pxp+14,py+160,1,"DISPLAY - AUTO",225,230,235);
     q=drawText(q,pxp+14,py+195,1,"LANGUAGE - PERSIAN",225,230,235);
-    q=drawText(q,pxp+22,py+359,1,"O BACK TO PHONE",175,190,205);
+    q=drawText(q,pxp+10,py+240,1,"O BACK",175,190,205);
   }
  } 
  if(mapVisible) {

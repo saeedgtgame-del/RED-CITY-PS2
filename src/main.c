@@ -557,7 +557,7 @@ static void render(void) {
     sign[0]=-56.0f;
     q=drawCube(q,viewScreen,sign,r,0.5f,0.35f,6.2f,190,145,75,tmp,xyz,rgbaq,&prim,&base);
   }
-  /* Second storey windows and stone lintels add depth to the facades. */  /* Second storey windows and stone lintels add depth to the facades. */
+  /* Second storey windows and stone lintels add depth to the facades. */
   p1[1]=11.0f; p1[2]=-25.0f-i*42.0f;
   q=drawCube(q,viewScreen,p1,r,0.38f,2.5f,2.8f,95,165,195,tmp,xyz,rgbaq,&prim,&base);
   p1[2]-=12.0f;
@@ -566,6 +566,13 @@ static void render(void) {
   q=drawCube(q,viewScreen,p2,r,0.38f,2.5f,2.8f,175,195,205,tmp,xyz,rgbaq,&prim,&base);
   p2[2]-=12.0f;
   q=drawCube(q,viewScreen,p2,r,0.38f,2.5f,2.8f,175,195,205,tmp,xyz,rgbaq,&prim,&base);
+  /* Window frames, stone sills and vertical mullions add facade depth. */
+  { int side,level; for(side=-1;side<=1;side+=2) for(level=0;level<2;level++) {
+     VECTOR wf={side*55.5f,level?8.2f:1.0f,-25.0f-i*42.0f,1};
+     q=drawCube(q,viewScreen,wf,r,0.48f,0.20f,4.0f,185,178,160,tmp,xyz,rgbaq,&prim,&base);
+     wf[1]=level?11.0f:4.0f;
+     q=drawCube(q,viewScreen,wf,r,0.48f,2.7f,0.16f,55,65,72,tmp,xyz,rgbaq,&prim,&base);
+  }}
   /* Facade cornices, balcony slabs and railings for a less boxy skyline. */
   { VECTOR trim={-68.0f,19.0f,-25.0f-i*42.0f,1};
     q=drawCube(q,viewScreen,trim,r,12.8f,0.55f,12.8f,145,132,115,tmp,xyz,rgbaq,&prim,&base);
@@ -582,6 +589,15 @@ static void render(void) {
   VECTOR d={-55.2f,-6.0f,-25.0f-i*42.0f,1},r={0,0,0,1};
   q=drawCube(q,viewScreen,d,r,0.4f,4.0f,2.5f,65,43,32,tmp,xyz,rgbaq,&prim,&base);
   d[0]=55.2f; q=drawCube(q,viewScreen,d,r,0.4f,4.0f,2.5f,55,58,65,tmp,xyz,rgbaq,&prim,&base);
+  /* Storefront metal frames and door handles. */
+  d[1]=-5.8f; d[2]=-25.0f-i*42.0f+1.35f; d[0]=-54.75f;
+  q=drawCube(q,viewScreen,d,r,0.18f,3.8f,0.14f,175,165,145,tmp,xyz,rgbaq,&prim,&base);
+  d[0]=54.75f;
+  q=drawCube(q,viewScreen,d,r,0.18f,3.8f,0.14f,175,165,145,tmp,xyz,rgbaq,&prim,&base);
+  d[0]=-54.65f; d[1]=-6.0f; d[2]=-25.0f-i*42.0f+2.15f;
+  q=drawCube(q,viewScreen,d,r,0.12f,0.45f,0.12f,215,195,125,tmp,xyz,rgbaq,&prim,&base);
+  d[0]=54.65f;
+  q=drawCube(q,viewScreen,d,r,0.12f,0.45f,0.12f,215,195,125,tmp,xyz,rgbaq,&prim,&base);
  }
  for(i=0;i<18;i++) {
   VECTOR t={-58.0f,-6.5f,-38.0f-i*48.0f,1},r={0,0,0,1};

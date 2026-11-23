@@ -767,7 +767,6 @@ static void render(void) {
      wh[0]=car->transform.position.x+wx*4.65f; wh[1]=-11.35f;
      q=drawCube(q,viewScreen,wh,cr,0.25f,0.75f,0.48f,155,160,170,tmp,xyz,rgbaq,&prim,&base);
   }}
- } else {  { int wx,wz; for(wx=-1;wx<=1;wx+=2) for(wz=-1;wz<=1;wz+=2) { VECTOR wh={car->transform.position.x+wx*4.1f,-11.35f,car->transform.position.z+wz*5.2f,1}; q=drawCube(q,viewScreen,wh,cr,0.8f,1.8f,1.2f,18,20,24,tmp,xyz,rgbaq,&prim,&base); } }
  } else {
  /* Player avatar with layered clothes, head, hair and face details. */
  { VECTOR p={px,-2.35f,pz,1},r={0,heading,0,1};

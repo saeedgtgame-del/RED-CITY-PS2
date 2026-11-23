@@ -190,10 +190,14 @@ static void updateWorld(void) {
  gustTimer-=dt; if(gustTimer<=0.0f) { windTarget=0.08f+(float)(worldRand()%1000u)/1000.0f*1.45f; gustTimer=5.0f+(float)(worldRand()%1200u)/100.0f; }
  windStrength+=(windTarget-windStrength)*0.008f; dustPhase+=dt*(1.0f+windStrength*4.0f);
  weatherTimer+=dt; if(weatherTimer>600.0f+(float)(worldRand()%1200u)) { int n=(int)(worldRand()%5u); if(n==weatherType)n=(n+1+(int)(worldRand()%4u))%5; weatherType=n; weatherTimer=0.0f; }
+ /* Update all five traffic vehicles. */
  for(i=0;i<5;i++) {
   e=&nxScene.entities[nxTraffic[i]];
   e->transform.position.z+=e->velocity.z*nxClock.deltaTime;
   if(e->transform.position.z>22.0f) e->transform.position.z=-820.0f-(float)i*24.0f;
+ }
+ /* There are exactly four pedestrian entities: never index this array with i==4. */
+ for(i=0;i<4;i++) {
   e=&nxScene.entities[nxPedestrians[i]];
   e->transform.position.x+=e->velocity.x*nxClock.deltaTime;
   if(e->transform.position.x>40.0f) e->velocity.x=-1.5f;
@@ -963,7 +967,7 @@ static void render(void) {
  if(inCar) { q=rect(q,SW/2-55,SH-72,110,18,10,15,24); q=drawText(q,SW/2-45,SH-67,1,"SPEED",245,220,120); { int sp=(int)fabsf(carSpeed); if(sp>34)sp=34; q=rect(q,SW/2+2,SH-65,sp,6,210,45,50); } }
  if(phoneVisible) {
   /* Keep the entire phone inside a conservative TV-safe area (overscan-safe). */
-  int phoneW=190,phoneH=350;
+  int phoneW=176,phoneH=300;
   int pxp=(SW-phoneW)/2,py=(SH-phoneH)/2;
   q=rect(q,pxp-4,py-4,phoneW+8,phoneH+8,3,4,7);
   q=rect(q,pxp,py,phoneW,phoneH,18,22,30);
@@ -980,20 +984,20 @@ static void render(void) {
         q=drawText(q,pxp+50,ay+15,1,apps[k],235,235,235);
       }
     }
-    q=drawText(q,pxp+14,py+321,1,"UP DOWN X OPEN O BACK",175,190,205);
+    q=drawText(q,pxp+12,py+278,1,"UP DOWN X O",175,190,205);
   } else if(phonePage==1) {
     q=drawText(q,pxp+14,py+80,2,"CONTACTS",245,225,170);
     q=drawText(q,pxp+14,py+125,1,"JACK - GARAGE",225,230,235);
     q=drawText(q,pxp+14,py+160,1,"ALEX MORGAN",225,230,235);
     q=drawText(q,pxp+14,py+195,1,"MARCUS",225,230,235);
     q=drawText(q,pxp+14,py+230,1,"VICTOR CROSS",225,230,235);
-    q=drawText(q,pxp+14,py+321,1,"O BACK TO PHONE",175,190,205);
+    q=drawText(q,pxp+12,py+278,1,"O BACK",175,190,205);
   } else if(phonePage==2) {
     q=drawText(q,pxp+14,py+80,2,"MESSAGES",245,225,170);
     q=drawText(q,pxp+14,py+125,1,"JACK: CALL ME",225,230,235);
     q=drawText(q,pxp+14,py+160,1,"ALEX: WE NEED TO TALK",225,230,235);
     q=drawText(q,pxp+14,py+195,1,"NEW CITY MESSAGE",150,210,185);
-    q=drawText(q,pxp+22,py+359,1,"O BACK TO PHONE",175,190,205);
+    q=drawText(q,pxp+12,py+278,1,"O BACK",175,190,205);
   } else {
     q=drawText(q,pxp+14,py+80,2,"SETTINGS",245,225,170);
     q=drawText(q,pxp+14,py+125,1,"SOUND - GAME DEFAULT",225,230,235);

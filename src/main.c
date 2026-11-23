@@ -547,7 +547,17 @@ static void render(void) {
   p2[0]=56.0f; p2[1]=5.0f; p2[2]=-25.0f-i*42.0f;
   q=drawCube(q,viewScreen,p2,r,0.35f,3.5f,3.5f,120,190,225,tmp,xyz,rgbaq,&prim,&base);
   p2[2]-=11.0f; q=drawCube(q,viewScreen,p2,r,0.35f,3.5f,3.5f,120,190,225,tmp,xyz,rgbaq,&prim,&base);
-  /* Second storey windows and stone lintels add depth to the facades. */
+  /* Shop signage, awnings and vertical facade trims give each block a distinct street identity. */
+  { VECTOR sign={-56.0f,-0.5f,-25.0f-i*42.0f,1};
+    q=drawCube(q,viewScreen,sign,r,0.45f,1.25f,5.2f,115,32,42,tmp,xyz,rgbaq,&prim,&base);
+    sign[0]=56.0f;
+    q=drawCube(q,viewScreen,sign,r,0.45f,1.25f,5.2f,32,72,105,tmp,xyz,rgbaq,&prim,&base);
+    sign[1]=-3.2f; sign[2]-=1.2f;
+    q=drawCube(q,viewScreen,sign,r,0.5f,0.35f,6.2f,190,145,75,tmp,xyz,rgbaq,&prim,&base);
+    sign[0]=-56.0f;
+    q=drawCube(q,viewScreen,sign,r,0.5f,0.35f,6.2f,190,145,75,tmp,xyz,rgbaq,&prim,&base);
+  }
+  /* Second storey windows and stone lintels add depth to the facades. */  /* Second storey windows and stone lintels add depth to the facades. */
   p1[1]=11.0f; p1[2]=-25.0f-i*42.0f;
   q=drawCube(q,viewScreen,p1,r,0.38f,2.5f,2.8f,95,165,195,tmp,xyz,rgbaq,&prim,&base);
   p1[2]-=12.0f;
@@ -630,7 +640,24 @@ static void render(void) {
     VECTOR wheel={v->transform.position.x+wx*3.2f,-11.35f,v->transform.position.z+wz*4.6f,1};
     q=drawCube(q,viewScreen,wheel,vr,0.8f,1.5f,1.1f,22,24,28,tmp,xyz,rgbaq,&prim,&base);
    }
-   VECTOR lamp={v->transform.position.x-2.3f,-9.7f,v->transform.position.z-6.8f,1};
+   /* Extra side glass, mirrors, door seams and alloy wheel centers. */
+   { int side; for(side=-1;side<=1;side+=2) {
+      VECTOR sideGlass={v->transform.position.x+side*3.02f,-8.15f,v->transform.position.z,1};
+      q=drawCube(q,viewScreen,sideGlass,vr,0.18f,0.82f,3.0f,75,125,150,tmp,xyz,rgbaq,&prim,&base);
+      sideGlass[1]=-9.45f; sideGlass[2]=v->transform.position.z-1.0f;
+      q=drawCube(q,viewScreen,sideGlass,vr,0.16f,0.12f,2.8f,95,100,108,tmp,xyz,rgbaq,&prim,&base);
+      sideGlass[0]=v->transform.position.x+side*3.75f; sideGlass[1]=-7.55f; sideGlass[2]=v->transform.position.z-2.0f;
+      q=drawCube(q,viewScreen,sideGlass,vr,0.65f,0.25f,0.55f,35,40,48,tmp,xyz,rgbaq,&prim,&base);
+      sideGlass[0]=v->transform.position.x+side*3.2f; sideGlass[1]=-11.0f;
+      sideGlass[2]=v->transform.position.z-4.4f;
+      q=drawCube(q,viewScreen,sideGlass,vr,0.18f,0.12f,0.18f,155,160,165,tmp,xyz,rgbaq,&prim,&base);
+      sideGlass[2]=v->transform.position.z+4.4f;
+      q=drawCube(q,viewScreen,sideGlass,vr,0.18f,0.12f,0.18f,155,160,165,tmp,xyz,rgbaq,&prim,&base);
+   }}
+   { int wx,wz; for(wx=-1;wx<=1;wx+=2) for(wz=-1;wz<=1;wz+=2) {
+      VECTOR hub={v->transform.position.x+wx*3.72f,-11.35f,v->transform.position.z+wz*4.6f,1};
+      q=drawCube(q,viewScreen,hub,vr,0.28f,0.65f,0.42f,145,150,158,tmp,xyz,rgbaq,&prim,&base);
+   }}   VECTOR lamp={v->transform.position.x-2.3f,-9.7f,v->transform.position.z-6.8f,1};
    q=drawCube(q,viewScreen,lamp,vr,0.45f,0.45f,0.3f,255,225,145,tmp,xyz,rgbaq,&prim,&base);
    lamp[0]=v->transform.position.x+2.3f;
    q=drawCube(q,viewScreen,lamp,vr,0.45f,0.45f,0.3f,255,225,145,tmp,xyz,rgbaq,&prim,&base);
@@ -708,7 +735,26 @@ static void render(void) {
     d[0]=car->transform.position.x+2.75f;
     q=drawCube(q,viewScreen,d,cr,0.75f,0.38f,0.22f,255,(int)(190+65*(1.0f-daylight)),(int)(105+130*(1.0f-daylight)),tmp,xyz,rgbaq,&prim,&base);
   }
-  { int wx,wz; for(wx=-1;wx<=1;wx+=2) for(wz=-1;wz<=1;wz+=2) { VECTOR wh={car->transform.position.x+wx*4.1f,-11.35f,car->transform.position.z+wz*5.2f,1}; q=drawCube(q,viewScreen,wh,cr,0.8f,1.8f,1.2f,18,20,24,tmp,xyz,rgbaq,&prim,&base); } }
+  /* Premium body details: side windows, mirrors, door handles, grille and wheel hubs. */
+  { int side; for(side=-1;side<=1;side+=2) {
+     VECTOR sd={car->transform.position.x+side*3.72f,-8.05f,car->transform.position.z-0.15f,1};
+     q=drawCube(q,viewScreen,sd,cr,0.18f,0.92f,3.35f,65,115,145,tmp,xyz,rgbaq,&prim,&base);
+     sd[1]=-9.25f; sd[2]=car->transform.position.z-0.7f;
+     q=drawCube(q,viewScreen,sd,cr,0.18f,0.12f,2.8f,115,120,125,tmp,xyz,rgbaq,&prim,&base);
+     sd[0]=car->transform.position.x+side*4.15f; sd[1]=-7.35f; sd[2]=car->transform.position.z-2.2f;
+     q=drawCube(q,viewScreen,sd,cr,0.75f,0.28f,0.65f,35,38,45,tmp,xyz,rgbaq,&prim,&base);
+     sd[0]=car->transform.position.x+side*4.88f; sd[1]=-9.65f; sd[2]=car->transform.position.z-8.1f;
+     q=drawCube(q,viewScreen,sd,cr,0.28f,0.55f,0.18f,255,220,155,tmp,xyz,rgbaq,&prim,&base);
+     sd[2]=car->transform.position.z+8.1f;
+     q=drawCube(q,viewScreen,sd,cr,0.28f,0.55f,0.18f,210,45,48,tmp,xyz,rgbaq,&prim,&base);
+  }}
+  { int wx,wz; for(wx=-1;wx<=1;wx+=2) for(wz=-1;wz<=1;wz+=2) {
+     VECTOR wh={car->transform.position.x+wx*4.1f,-11.35f,car->transform.position.z+wz*5.2f,1};
+     q=drawCube(q,viewScreen,wh,cr,0.8f,1.8f,1.2f,18,20,24,tmp,xyz,rgbaq,&prim,&base);
+     wh[0]=car->transform.position.x+wx*4.65f; wh[1]=-11.35f;
+     q=drawCube(q,viewScreen,wh,cr,0.25f,0.75f,0.48f,155,160,170,tmp,xyz,rgbaq,&prim,&base);
+  }}
+ } else {  { int wx,wz; for(wx=-1;wx<=1;wx+=2) for(wz=-1;wz<=1;wz+=2) { VECTOR wh={car->transform.position.x+wx*4.1f,-11.35f,car->transform.position.z+wz*5.2f,1}; q=drawCube(q,viewScreen,wh,cr,0.8f,1.8f,1.2f,18,20,24,tmp,xyz,rgbaq,&prim,&base); } }
  } else {
  /* Player avatar with layered clothes, head, hair and face details. */
  { VECTOR p={px,-2.35f,pz,1},r={0,heading,0,1};

@@ -28,7 +28,8 @@ static struct padButtonStatus pad;
 static int padReady=0, mission=0, logoFrames=0;
 static int padConnected=0, padInitialized=0, padOpened=0, padPort=0;
 static int inCar=0, mapVisible=0, playerVehicle=-1;
-static int lastTriangle=0, lastStart=0;
+static int phoneVisible=0, phonePage=0, phoneSelection=0;
+static int lastTriangle=0, lastStart=0, lastSelect=0, lastCross=0, lastCircle=0, lastUp=0, lastDown=0;
 static float carSpeed=0.0f, carHeading=0.0f;
 static NX_Scene nxScene;
 static NX_Camera nxCamera;
@@ -303,15 +304,34 @@ static void updatePad(void) {
   if(!(pad.btns & PAD_R2)) in.turn=1.0f;
   if(!(pad.btns & PAD_CROSS)) in.held=1; /* Cross = sprint */
   { int tri=(!(pad.btns & PAD_TRIANGLE)); int sta=(!(pad.btns & PAD_START));
-    if(tri && !lastTriangle) {
-      if(!inCar) {
-        float dx=player->transform.position.x-nxScene.entities[playerVehicle].transform.position.x;
-        float dz=player->transform.position.z-nxScene.entities[playerVehicle].transform.position.z;
-        if(dx*dx+dz*dz<225.0f) { inCar=1; carSpeed=0.0f; }
-      } else { inCar=0; player->transform.position.x=nxScene.entities[playerVehicle].transform.position.x+5.0f; player->transform.position.z=nxScene.entities[playerVehicle].transform.position.z; }
+    int sel=(!(pad.btns & PAD_SELECT)), cross=(!(pad.btns & PAD_CROSS));
+    int circle=(!(pad.btns & PAD_CIRCLE)), up=(!(pad.btns & PAD_UP)), down=(!(pad.btns & PAD_DOWN));
+    if(sel && !lastSelect) { phoneVisible=!phoneVisible; if(phoneVisible) { phonePage=0; phoneSelection=0; } }
+    if(phoneVisible) {
+      if(up && !lastUp) { phoneSelection=(phoneSelection+3)%4; }
+      if(down && !lastDown) { phoneSelection=(phoneSelection+1)%4; }
+      if(cross && !lastCross) {
+        if(phonePage==0) {
+          if(phoneSelection==0) phonePage=1;
+          else if(phoneSelection==1) phonePage=2;
+          else if(phoneSelection==2) { mapVisible=1; phoneVisible=0; }
+          else phonePage=3;
+        }
+      }
+      if(circle && !lastCircle) { if(phonePage) phonePage=0; else phoneVisible=0; }
+      in.moveX=0.0f; in.moveZ=0.0f; in.held=0;
+    } else {
+      if(tri && !lastTriangle) {
+        if(!inCar) {
+          float dx=player->transform.position.x-nxScene.entities[playerVehicle].transform.position.x;
+          float dz=player->transform.position.z-nxScene.entities[playerVehicle].transform.position.z;
+          if(dx*dx+dz*dz<225.0f) { inCar=1; carSpeed=0.0f; }
+        } else { inCar=0; player->transform.position.x=nxScene.entities[playerVehicle].transform.position.x+5.0f; player->transform.position.z=nxScene.entities[playerVehicle].transform.position.z; }
+      }
+      if(sta && !lastStart) mapVisible=!mapVisible;
     }
-    if(sta && !lastStart) mapVisible=!mapVisible;
-    lastTriangle=tri; lastStart=sta;
+    lastTriangle=tri; lastStart=sta; lastSelect=sel; lastCross=cross;
+    lastCircle=circle; lastUp=up; lastDown=down;
   }
   if(inCar) {
     NX_Entity *car=&nxScene.entities[playerVehicle];
@@ -777,8 +797,47 @@ static void render(void) {
  q=rect(q,SW-232,SH-60,220,48,8,12,18);
  q=drawText(q,SW-222,SH-51,1,inCar?"DRIVE - LEFT STICK":"MOVE - LEFT STICK",225,230,235);
  q=drawText(q,SW-222,SH-37,1,"TRIANGLE - ENTER CAR",150,190,220);
- q=drawText(q,SW-222,SH-23,1,"START - CITY MAP",150,190,220);
+ q=drawText(q,SW-222,SH-23,1,"START MAP - SELECT PHONE",150,190,220);
  if(inCar) { q=rect(q,SW/2-55,SH-72,110,18,10,15,24); q=drawText(q,SW/2-45,SH-67,1,"SPEED",245,220,120); { int sp=(int)fabsf(carSpeed); if(sp>34)sp=34; q=rect(q,SW/2+2,SH-65,sp,6,210,45,50); } }
+ if(phoneVisible) {
+  int py=58,pxp=SW/2-112;
+  q=rect(q,pxp-5,py-5,224,398,3,4,7);
+  q=rect(q,pxp,py,214,388,18,22,30);
+  q=rect(q,pxp+8,py+8,198,28,35,42,54);
+  q=drawText(q,pxp+18,py+18,1,"RED CITY PHONE",235,225,205);
+  q=drawText(q,pxp+16,py+52,1,"09:41  SIGNAL  BATTERY",130,220,165);
+  if(phonePage==0) {
+    q=drawText(q,pxp+58,py+91,2,"PHONE",245,245,245);
+    { const char *apps[4]={"CONTACTS","MESSAGES","CITY MAP","SETTINGS"};
+      int k; for(k=0;k<4;k++) {
+        int ay=py+132+k*54;
+        q=rect(q,pxp+18,ay,178,43,(k==phoneSelection)?110:43,(k==phoneSelection)?35:50,(k==phoneSelection)?48:62);
+        q=rect(q,pxp+27,ay+9,24,24,(k==0)?70:(k==1)?65:(k==2)?55:90,(k==0)?145:(k==1)?105:(k==2)?130:95,(k==0)?205:(k==1)?155:(k==2)?95:125);
+        q=drawText(q,pxp+60,ay+17,1,apps[k],235,235,235);
+      }
+    }
+    q=drawText(q,pxp+22,py+359,1,"UP DOWN X OPEN O BACK",175,190,205);
+  } else if(phonePage==1) {
+    q=drawText(q,pxp+22,py+96,2,"CONTACTS",245,225,170);
+    q=drawText(q,pxp+22,py+145,1,"JACK - GARAGE",225,230,235);
+    q=drawText(q,pxp+22,py+184,1,"ALEX MORGAN",225,230,235);
+    q=drawText(q,pxp+22,py+223,1,"MARCUS",225,230,235);
+    q=drawText(q,pxp+22,py+262,1,"VICTOR CROSS",225,230,235);
+    q=drawText(q,pxp+22,py+359,1,"O BACK TO PHONE",175,190,205);
+  } else if(phonePage==2) {
+    q=drawText(q,pxp+22,py+96,2,"MESSAGES",245,225,170);
+    q=drawText(q,pxp+22,py+145,1,"JACK: CALL ME",225,230,235);
+    q=drawText(q,pxp+22,py+184,1,"ALEX: WE NEED TO TALK",225,230,235);
+    q=drawText(q,pxp+22,py+223,1,"NEW CITY MESSAGE",150,210,185);
+    q=drawText(q,pxp+22,py+359,1,"O BACK TO PHONE",175,190,205);
+  } else {
+    q=drawText(q,pxp+22,py+96,2,"SETTINGS",245,225,170);
+    q=drawText(q,pxp+22,py+145,1,"SOUND - GAME DEFAULT",225,230,235);
+    q=drawText(q,pxp+22,py+184,1,"DISPLAY - AUTO",225,230,235);
+    q=drawText(q,pxp+22,py+223,1,"LANGUAGE - PERSIAN",225,230,235);
+    q=drawText(q,pxp+22,py+359,1,"O BACK TO PHONE",175,190,205);
+  }
+ } 
  if(mapVisible) {
   q=rect(q,SW/2-190,SH/2-145,380,290,5,9,16); q=rect(q,SW/2-180,SH/2-135,360,270,24,38,42);
   for(i=0;i<7;i++) { q=rect(q,SW/2-165+i*54,SH/2-125,5,250,105,112,105); q=rect(q,SW/2-170,SH/2-120+i*40,340,5,105,112,105); }

@@ -44,7 +44,7 @@ static int nxTraffic[5];
 static int nxPedestrians[4];
 static const float missionTargets[15]={-70.0f,-145.0f,-220.0f,-295.0f,-370.0f,-445.0f,-520.0f,-595.0f,-670.0f,-745.0f,-820.0f,-895.0f,-970.0f,-1045.0f,-1120.0f};
 static float px=0.0f, pz=0.0f, heading=0.0f;
-static float cameraYaw=0.0f, cameraPitch=0.28f, cameraDistance=12.0f;
+static float cameraYaw=0.0f, cameraPitch=0.32f, cameraDistance=20.0f;
 static int cameraReady=0;
 static VECTOR cameraPos={-29.0f,5.5f,-14.0f,1.0f};
 static VECTOR cameraRot={0.0f,0.0f,0.0f,1.0f};
@@ -499,7 +499,7 @@ static void render(void) {
   dz=targetZ-cameraPos[2];
   /* Camera's local forward axis is -Z. These signs are essential:
      positive pitch/yaw here used to point away from the character. */
-  cameraRot[0]=atan2f(dy,sqrtf(dx*dx+dz*dz));
+  cameraRot[0]=atan2f(-dy,sqrtf(dx*dx+dz*dz));
   cameraRot[1]=atan2f(-dx,-dz);
   cameraRot[2]=0.0f;
  }

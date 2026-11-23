@@ -386,14 +386,54 @@ static void updatePad(void) {
  }
 }
 
+#define MAX_CLIPPED_VERTICES 256
+
+/* Clip a homogeneous polygon against one of the six view-frustum planes.
+   Unlike dropping every triangle that touches a clipped vertex, this keeps
+   the visible part of roads, buildings and other large meshes. */
+static float clipDistance(const VECTOR v,int plane) {
+ switch(plane) {
+  case 0: return v[3]+v[0];
+  case 1: return v[3]-v[0];
+  case 2: return v[3]+v[1];
+  case 3: return v[3]-v[1];
+  case 4: return v[3]+v[2];
+  default:return v[3]-v[2];
+ }
+}
+static int clipPolygonPlane(const VECTOR *input,int count,VECTOR *output,int plane) {
+ int i,outCount=0;
+ if(count<3) return 0;
+ for(i=0;i<count;i++) {
+  const VECTOR *s=&input[(i+count-1)%count];
+  const VECTOR *e=&input[i];
+  float ds=clipDistance(*s,plane),de=clipDistance(*e,plane);
+  int inS=(ds>=0.0f),inE=(de>=0.0f),k;
+  if(inS!=inE) {
+   float den=ds-de;
+   float t=(fabsf(den)>0.000001f)?ds/den:0.0f;
+   if(outCount<12) {
+    for(k=0;k<4;k++) output[outCount][k]=(*s)[k]+((*e)[k]-(*s)[k])*t;
+    outCount++;
+   }
+  }
+  if(inE && outCount<12) {
+   for(k=0;k<4;k++) output[outCount][k]=(*e)[k];
+   outCount++;
+  }
+ }
+ return outCount;
+}
+
 static qword_t *drawCube(qword_t *q, MATRIX viewScreen, VECTOR pos, VECTOR rot,
                      float sx,float sy,float sz,int cr,int cg,int cb,
                      VECTOR *tmp, xyz_t *xyz, color_t *rgbaq,
                      prim_t *prim,color_t *base) {
- MATRIX lw,wv,ls; int i,validTriangles=0;
+ MATRIX lw,wv,ls;
+ int i,outCount=0;
  VECTOR scaled[24];
+ color_f_t colours[MAX_CLIPPED_VERTICES];
  for(i=0;i<vertex_count;i++) {
-  /* Mesh vertices are authored at +/-10 units; convert requested half-extents. */
   scaled[i][0]=vertices[i][0]*(sx*0.1f);
   scaled[i][1]=vertices[i][1]*(sy*0.1f);
   scaled[i][2]=vertices[i][2]*(sz*0.1f);
@@ -402,38 +442,49 @@ static qword_t *drawCube(qword_t *q, MATRIX viewScreen, VECTOR pos, VECTOR rot,
  create_local_world(lw,pos,rot);
  create_world_view(wv,cameraPos,cameraRot);
  create_local_screen(ls,lw,wv,viewScreen);
- calculate_vertices(tmp,vertex_count,scaled,ls);
 
- /* PS2SDK calculate_vertices marks an out-of-frustum vertex by replacing it
-    with (0,0,0). Never submit a triangle containing such a vertex: doing so
-    connects the clipped corner to the screen origin and creates long spikes. */
+ /* Transform each triangle in homogeneous clip space, clip it against all
+    six frustum planes, then perspective-divide only the surviving vertices. */
  for(i=0;i<points_count;i+=3) {
-  int a=points[i],b=points[i+1],c=points[i+2];
-  int ca=(fabsf(tmp[a][0])<0.00001f && fabsf(tmp[a][1])<0.00001f && fabsf(tmp[a][2])<0.00001f);
-  int cb=(fabsf(tmp[b][0])<0.00001f && fabsf(tmp[b][1])<0.00001f && fabsf(tmp[b][2])<0.00001f);
-  int cc=(fabsf(tmp[c][0])<0.00001f && fabsf(tmp[c][1])<0.00001f && fabsf(tmp[c][2])<0.00001f);
-  if(!ca && !cb && !cc) validTriangles++;
- }
- if(validTriangles==0) return q;
-
- draw_convert_xyz(xyz,2048,2048,32,vertex_count,(vertex_f_t*)tmp);
- { color_f_t colours[24];
-   for(i=0;i<vertex_count;i++) {
-    colours[i].r=cr/255.0f; colours[i].g=cg/255.0f;
-    colours[i].b=cb/255.0f; colours[i].a=1.0f;
+  VECTOR a[12],b[12];
+  int n=3,plane,j,k;
+  vector_apply(a[0],scaled[points[i]],ls);
+  vector_apply(a[1],scaled[points[i+1]],ls);
+  vector_apply(a[2],scaled[points[i+2]],ls);
+  for(plane=0;plane<6 && n>=3;plane++) {
+   n=clipPolygonPlane(a,n,b,plane);
+   for(j=0;j<n;j++) for(k=0;k<4;k++) a[j][k]=b[j][k];
+  }
+  if(n<3) continue;
+  for(j=1;j<n-1;j++) {
+   int ids[3]={0,j,j+1};
+   for(k=0;k<3;k++) {
+    VECTOR *v=&a[ids[k]];
+    float w=v[3];
+    if(fabsf(w)<0.000001f || outCount>=MAX_CLIPPED_VERTICES) break;
+    tmp[outCount][0]=v[0]/w;
+    tmp[outCount][1]=v[1]/w;
+    tmp[outCount][2]=v[2]/w;
+    tmp[outCount][3]=1.0f;
+    outCount++;
    }
-   draw_convert_rgbq(rgbaq,vertex_count,(vertex_f_t*)tmp,colours,0x80);
+   if(k<3) break;
+  }
  }
+ if(outCount<3) return q;
+ for(i=0;i<outCount;i++) {
+  colours[i].r=cr/255.0f;
+  colours[i].g=cg/255.0f;
+  colours[i].b=cb/255.0f;
+  colours[i].a=1.0f;
+ }
+ draw_convert_xyz(xyz,2048,2048,32,outCount,(vertex_f_t*)tmp);
+ draw_convert_rgbq(rgbaq,outCount,(vertex_f_t*)tmp,colours,0x80);
  q=draw_prim_start(q,0,prim,base);
- for(i=0;i<points_count;i+=3) {
-  int a=points[i],b=points[i+1],c=points[i+2];
-  int ca=(fabsf(tmp[a][0])<0.00001f && fabsf(tmp[a][1])<0.00001f && fabsf(tmp[a][2])<0.00001f);
-  int cb=(fabsf(tmp[b][0])<0.00001f && fabsf(tmp[b][1])<0.00001f && fabsf(tmp[b][2])<0.00001f);
-  int cc=(fabsf(tmp[c][0])<0.00001f && fabsf(tmp[c][1])<0.00001f && fabsf(tmp[c][2])<0.00001f);
-  if(ca || cb || cc) continue;
-  q->dw[0]=rgbaq[a].rgbaq; q->dw[1]=xyz[a].xyz; q++;
-  q->dw[0]=rgbaq[b].rgbaq; q->dw[1]=xyz[b].xyz; q++;
-  q->dw[0]=rgbaq[c].rgbaq; q->dw[1]=xyz[c].xyz; q++;
+ for(i=0;i<outCount;i++) {
+  q->dw[0]=rgbaq[i].rgbaq;
+  q->dw[1]=xyz[i].xyz;
+  q++;
  }
  q=draw_prim_end(q,2,DRAW_RGBAQ_REGLIST);
  return q;
@@ -445,8 +496,8 @@ static void render(void) {
  qword_t *q,*tag; int i;
  if(!packets[0]) {
   packets[0]=packet_init(65536,PACKET_NORMAL); packets[1]=packet_init(65536,PACKET_NORMAL);
-  tmp=memalign(128,sizeof(VECTOR)*vertex_count); xyz=memalign(128,sizeof(xyz_t)*vertex_count);
-  rgbaq=memalign(128,sizeof(color_t)*vertex_count);
+  tmp=memalign(128,sizeof(VECTOR)*MAX_CLIPPED_VERTICES); xyz=memalign(128,sizeof(xyz_t)*MAX_CLIPPED_VERTICES);
+  rgbaq=memalign(128,sizeof(color_t)*MAX_CLIPPED_VERTICES);
   prim.type=PRIM_TRIANGLE; prim.shading=PRIM_SHADE_GOURAUD; prim.mapping=DRAW_DISABLE;
   prim.fogging=DRAW_DISABLE; prim.blending=DRAW_DISABLE; prim.antialiasing=DRAW_ENABLE;
   prim.mapping_type=PRIM_MAP_ST; prim.colorfix=PRIM_UNFIXED;

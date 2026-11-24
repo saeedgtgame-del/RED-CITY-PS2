@@ -49,7 +49,7 @@ static qword_t *draw_box(qword_t *q,int x,int y,int w,int h,int r,int g,int b) {
 }
 
 /* Small built-in bitmap font; no external assets or runtime file loading. */
-static const unsigned char font[37][7]={
+static const unsigned char font[38][7]={
  {14,17,19,21,25,17,14},{4,12,4,4,4,4,14},{14,17,1,2,4,8,31},
  {30,1,1,14,1,1,30},{2,6,10,18,31,2,2},{31,16,16,30,1,1,30},
  {6,8,16,30,17,17,14},{31,1,2,4,8,8,8},{14,17,17,14,17,17,14},
@@ -69,17 +69,8 @@ static const unsigned char font[37][7]={
 static int glyph(char c) {
  if(c>='0'&&c<='9') return c-'0';
  if(c>='A'&&c<='Z') return 10+c-'A';
- if(c=='-') return 26;
- if(c=='/') return 27;
- if(c==' ') return 28;
- if(c==':') return 29;
- if(c=='.') return 30;
- if(c=='!') return 31;
- if(c=='?') return 32;
- if(c=='(') return 33;
- if(c==')') return 34;
- if(c=='+') return 35;
- return 28;
+ if(c=='-') return 36;
+ return 37;
 }
 static qword_t *draw_text(qword_t *q,int x,int y,int scale,const char *s,int r,int g,int b) {
  int i,row,col;
@@ -184,8 +175,6 @@ static void render_frame(void) {
  q=p->data;
  q=draw_disable_tests(q,0,&zbuf);
  q=draw_clear(q,0,2048-SCREEN_W/2,2048-SCREEN_H/2,SCREEN_W,SCREEN_H,39,62,57);
- draw_city(q);
- /* redraw into the same packet; draw_city's return is intentionally captured below */
  q=p->data;
  q=draw_disable_tests(q,0,&zbuf);
  q=draw_clear(q,0,2048-SCREEN_W/2,2048-SCREEN_H/2,SCREEN_W,SCREEN_H,39,62,57);

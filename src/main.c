@@ -30,6 +30,7 @@ static zbuffer_t zbuf;
 static unsigned char padBuf[256] __attribute__((aligned(64)));
 static struct padButtonStatus pad;
 static int padReady=0, mission=0, logoFrames=0;
+static float cameraLookHold=0.0f, missionNoticeTimer=0.0f;
 static int padConnected=0, padInitialized=0, padOpened=0, padPort=0;
 static int inCar=0, mapVisible=0, playerVehicle=-1;
 static int phoneVisible=0, phonePage=0, phoneSelection=0;
@@ -44,7 +45,8 @@ static unsigned int weatherSeed=0x51A7u;
 static int weatherType=0;
 static int nxTraffic[5];
 static int nxPedestrians[4];
-static const float missionTargets[15]={-70.0f,-145.0f,-220.0f,-295.0f,-370.0f,-445.0f,-520.0f,-595.0f,-670.0f,-745.0f,-820.0f,-895.0f,-970.0f,-1045.0f,-1120.0f};
+static const float missionTargets[5]={-70.0f,-145.0f,-220.0f,-295.0f,-370.0f};
+static const char *missionTitles[5]={"RETURN TO TABRIZ","JACKS GARAGE","MEET ALEX","FORCED ALLIANCE","NEW BEGINNING"};
 static float px=0.0f, pz=0.0f, heading=0.0f;
 static float cameraYaw=0.0f, cameraPitch=0.32f, cameraDistance=20.0f;
 static int cameraReady=0;
@@ -194,6 +196,8 @@ static void updateWorld(void) {
  gustTimer-=dt; if(gustTimer<=0.0f) { windTarget=0.08f+(float)(worldRand()%1000u)/1000.0f*1.45f; gustTimer=5.0f+(float)(worldRand()%1200u)/100.0f; }
  windStrength+=(windTarget-windStrength)*0.008f; dustPhase+=dt*(1.0f+windStrength*4.0f);
  weatherTimer+=dt; if(weatherTimer>600.0f+(float)(worldRand()%1200u)) { int n=(int)(worldRand()%5u); if(n==weatherType)n=(n+1+(int)(worldRand()%4u))%5; weatherType=n; weatherTimer=0.0f; }
+ if(cameraLookHold>0.0f) cameraLookHold-=dt;
+ if(missionNoticeTimer>0.0f) missionNoticeTimer-=dt;
  /* Update all five traffic vehicles. */
  for(i=0;i<5;i++) {
   e=&nxScene.entities[nxTraffic[i]];
@@ -207,8 +211,9 @@ static void updateWorld(void) {
   if(e->transform.position.x>40.0f) e->velocity.x=-1.5f;
   if(e->transform.position.x< -40.0f) e->velocity.x=1.5f;
  }
- if(mission<15 && pz<=missionTargets[mission]+3.0f) {
+ if(mission<5 && pz<=missionTargets[mission]+3.0f) {
   mission++;
+  missionNoticeTimer=6.0f;
  }
 }
 /* Planar contact response keeps the player from walking through traffic or pedestrians. */
@@ -302,7 +307,9 @@ static void updatePad(void) {
   if(ax>0.14f || ax< -0.14f) in.moveX=ax;
   if(ay>0.14f || ay< -0.14f) in.moveZ=ay;
   /* Analog-right is the only free-look camera control. A centered stick never rotates. */
-  if(padConnected && (rx>0.22f || rx< -0.22f)) cameraYaw+=rx*0.0040f;
+  if(padConnected && (rx>0.22f || rx< -0.22f)) { cameraYaw+=rx*0.0040f; cameraLookHold=1.35f; }
+  if(cameraYaw>3.14159265f) cameraYaw-=6.28318530f;
+  if(cameraYaw< -3.14159265f) cameraYaw+=6.28318530f;
   if(padConnected && (ry>0.22f || ry< -0.22f)) {
    cameraPitch+=ry*0.0022f;
    if(cameraPitch<0.16f) cameraPitch=0.16f;
@@ -366,10 +373,15 @@ static void updatePad(void) {
       float mag=sqrtf(right*right+forward*forward);
       if(mag>1.0f) mag=1.0f;
       if(mag>0.12f) {
-        /* Walking/running gently recenters the camera behind the active character.
-           Right-stick input remains free-look; no idle auto-orbit is applied. */
-        cameraYaw*=0.90f;
-        cameraPitch+= (0.32f-cameraPitch)*0.06f;
+        /* Recenter only after the player has stopped using right-stick free-look.
+           The gradual shortest-angle blend never snaps or fights active camera input. */
+        if(cameraLookHold<=0.0f) {
+          float recenter=-cameraYaw;
+          while(recenter>3.14159265f) recenter-=6.28318530f;
+          while(recenter< -3.14159265f) recenter+=6.28318530f;
+          cameraYaw+=recenter*0.025f;
+          cameraPitch+=(0.32f-cameraPitch)*0.025f;
+        }
         float cs=cosf(cameraYaw), sn=sinf(cameraYaw);
         float worldX=right*cs-forward*sn;
         float worldZ=right*sn-forward*cs;
@@ -725,7 +737,7 @@ static void render(void) {
    h[0]=-47.0f; h[1]=-9.0f; h[2]=30.0f; q=drawCube(q,viewScreen,h,hr,7.0f,0.25f,7.0f,135,130,120,tmp,xyz,rgbaq,&prim,&base);
  }
  /* Mission beacon advances through the ten-stage opening story. */
- if(mission<15) {
+ if(mission<5) {
   VECTOR wp={0,8,missionTargets[mission],1},wr={0,0,0,1};
   q=drawCube(q,viewScreen,wp,wr,1.2f,15.0f,1.2f,245,185,35,tmp,xyz,rgbaq,&prim,&base);
   wp[1]=24.0f; q=drawCube(q,viewScreen,wp,wr,4.0f,1.0f,4.0f,255,220,75,tmp,xyz,rgbaq,&prim,&base);
@@ -958,8 +970,16 @@ static void render(void) {
  /* Controller connection status intentionally hidden from HUD. */
  { const char *w=weatherType==0?"CLEAR":weatherType==1?"CLOUDY":weatherType==2?"POLLUTED":weatherType==3?"RAIN":"SNOW"; q=drawText(q,SW-105,19,1,w,210,210,190); }
  q=rect(q,SW/2-118,12,236,34,10,15,24);
- if(mission<30) { char ms[24]="MISSION 01/15 - MARKER"; ms[8]=(char)('0'+(mission+1)/10); ms[9]=(char)('0'+(mission+1)%10); q=drawText(q,SW/2-108,19,1,ms,245,210,105); }
- else q=drawText(q,SW/2-65,19,1,"MISSION COMPLETE",100,235,140);
+ if(mission<5) {
+   char ms[24]="MISSION 01/05";
+   ms[8]=(char)('0'+(mission+1)/10); ms[9]=(char)('0'+(mission+1)%10);
+   q=drawText(q,SW/2-108,19,1,ms,245,210,105);
+   q=drawText(q,SW/2-108,34,1,missionTitles[mission],225,225,225);
+ } else q=drawText(q,SW/2-65,19,1,"ALL 5 MISSIONS COMPLETE",100,235,140);
+ if(missionNoticeTimer>0.0f && mission>0) {
+   q=rect(q,SW/2-150,SH-112,300,34,12,18,26);
+   q=drawText(q,SW/2-140,SH-101,1,missionTitles[mission-1],245,220,150);
+ }
  /* Street-style minimap. */
  q=rect(q,12,SH-151,112,112,8,12,18);
  q=rect(q,18,SH-145,100,100,30,45,42);

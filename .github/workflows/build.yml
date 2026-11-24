@@ -1,43 +1,25 @@
-
-name: Build RED CITY PS2
+name: RED CITY clean rebuild
 
 on:
   push:
     branches:
       - main
+      - rebuild-v1
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-
-      - name: Build PS2 game
+      - name: Build PS2 ELF
         run: |
-          docker run --rm \
-            -v "$GITHUB_WORKSPACE:/src" \
-            -w /src \
-            ps2dev/ps2dev:latest \
-            sh -c "apk add --no-cache make && make"
-
-      - name: Find build output
-        if: always()
-        run: |
-          echo "Files in project:"
-          find . -type f | head -100
-          echo "ELF files:"
-          find . -type f -iname "*.elf" -print
-
-      - name: Upload possible ELF
+          docker run --rm -v "$GITHUB_WORKSPACE:/src" -w /src ps2dev/ps2dev:latest sh -c "apk add --no-cache make && make clean && make"
+      - name: Upload ELF
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: RED-CITY-BUILD-OUTPUT
-          path: |
-            **/*.elf
-            **/*.ELF
+          name: RED-CITY-REBUILD-V1
+          path: RED_CITY.ELF
           if-no-files-found: warn
-          

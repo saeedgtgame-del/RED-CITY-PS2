@@ -22,6 +22,8 @@
 #define OBJECTS 15
 /* Each cube emits 36 vertices plus GIF setup; the full city can exceed 65k qwords. */
 #define RENDER_PACKET_QWORDS 131072
+#define RENDER_PACKET_UI_RESERVE 2048
+static qword_t *renderPacketLimit = 0;
 
 static framebuffer_t frame;
 static zbuffer_t zbuf;
@@ -451,6 +453,10 @@ static qword_t *drawCube(qword_t *q, MATRIX viewScreen, VECTOR pos, VECTOR rot,
                      prim_t *prim,color_t *base) {
  MATRIX lw,wv,ls;
  VECTOR scaled[24],clipA[16],clipB[16];
+ /* A clipped cube may expand to as many as 256 output vertices. Never let
+    one primitive overrun the current DMA packet; keep a reserved tail for HUD. */
+ if(!renderPacketLimit || q + (MAX_CLIPPED_VERTICES * 2 + 8) > renderPacketLimit)
+  return q;
  int i,outCount=0;
  for(i=0;i<vertex_count;i++) {
   scaled[i][0]=vertices[i][0]*(sx*0.1f);
@@ -513,6 +519,15 @@ static void render(void) {
   packets[0]=packet_init(RENDER_PACKET_QWORDS,PACKET_NORMAL); packets[1]=packet_init(RENDER_PACKET_QWORDS,PACKET_NORMAL);
   tmp=memalign(128,sizeof(VECTOR)*MAX_CLIPPED_VERTICES); xyz=memalign(128,sizeof(xyz_t)*MAX_CLIPPED_VERTICES);
   rgbaq=memalign(128,sizeof(color_t)*MAX_CLIPPED_VERTICES);
+  if(!packets[0] || !packets[1] || !tmp || !xyz || !rgbaq) {
+   /* Fail closed to a stable diagnostic screen instead of corrupting RAM. */
+   for(;;) { packet_t *ep=packet_init(32,PACKET_NORMAL); if(ep) {
+     qword_t *eq=ep->data; eq=draw_disable_tests(eq,0,&zbuf);
+     eq=draw_clear(eq,0,2048-SW/2,2048-SH/2,SW,SH,18,8,12);
+     eq=draw_finish(eq); dma_channel_send_normal(DMA_CHANNEL_GIF,ep->data,eq-ep->data,0,0);
+     dma_wait_fast(); packet_free(ep);
+    } graph_wait_vsync(); }
+  }
   prim.type=PRIM_TRIANGLE; prim.shading=PRIM_SHADE_GOURAUD; prim.mapping=DRAW_DISABLE;
   prim.fogging=DRAW_DISABLE; prim.blending=DRAW_DISABLE; prim.antialiasing=DRAW_ENABLE;
   prim.mapping_type=PRIM_MAP_ST; prim.colorfix=PRIM_UNFIXED;
@@ -555,6 +570,7 @@ static void render(void) {
   cameraRot[2]=0.0f;
  }
  tag=packets[ctx]->data; q=tag+1;
+ renderPacketLimit=tag+RENDER_PACKET_QWORDS-RENDER_PACKET_UI_RESERVE;
  q=draw_disable_tests(q,0,&zbuf);
  { int sr=weatherType==3?72:(weatherType==4?145:(weatherType==2?112:90)); int sg=weatherType==3?88:(weatherType==4?155:(weatherType==2?112:135)); int sb=weatherType==3?105:(weatherType==4?175:(weatherType==2?112:165)); q=draw_clear(q,0,2048-SW/2,2048-SH/2,SW,SH,(int)(sr*daylight),(int)(sg*daylight),(int)(sb*(0.75f+daylight*0.25f))); }
  q=draw_enable_tests(q,0,&zbuf);

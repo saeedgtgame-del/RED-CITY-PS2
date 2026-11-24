@@ -45,7 +45,8 @@ static unsigned int weatherSeed=0x51A7u;
 static int weatherType=0;
 static int nxTraffic[5];
 static int nxPedestrians[4];
-static const float missionTargets[5]={-70.0f,-145.0f,-220.0f,-295.0f,-370.0f};
+static const float missionTargetX[5]={-47.0f,-19.0f,32.0f,-35.0f,35.0f};
+static const float missionTargets[5]={13.0f,-70.0f,-145.0f,-220.0f,-295.0f};
 static const char *missionTitles[5]={"RETURN TO TABRIZ","JACKS GARAGE","MEET ALEX","FORCED ALLIANCE","NEW BEGINNING"};
 static float px=0.0f, pz=0.0f, heading=0.0f;
 static float cameraYaw=0.0f, cameraPitch=0.32f, cameraDistance=20.0f;
@@ -211,9 +212,13 @@ static void updateWorld(void) {
   if(e->transform.position.x>40.0f) e->velocity.x=-1.5f;
   if(e->transform.position.x< -40.0f) e->velocity.x=1.5f;
  }
- if(mission<5 && pz<=missionTargets[mission]+3.0f) {
-  mission++;
-  missionNoticeTimer=6.0f;
+ if(mission<5) {
+  float mdx=px-missionTargetX[mission];
+  float mdz=pz-missionTargets[mission];
+  if(mdx*mdx+mdz*mdz<144.0f) {
+   mission++;
+   missionNoticeTimer=6.0f;
+  }
  }
 }
 /* Planar contact response keeps the player from walking through traffic or pedestrians. */
@@ -738,7 +743,7 @@ static void render(void) {
  }
  /* Mission beacon advances through the ten-stage opening story. */
  if(mission<5) {
-  VECTOR wp={0,8,missionTargets[mission],1},wr={0,0,0,1};
+  VECTOR wp={missionTargetX[mission],8,missionTargets[mission],1},wr={0,0,0,1};
   q=drawCube(q,viewScreen,wp,wr,1.2f,15.0f,1.2f,245,185,35,tmp,xyz,rgbaq,&prim,&base);
   wp[1]=24.0f; q=drawCube(q,viewScreen,wp,wr,4.0f,1.0f,4.0f,255,220,75,tmp,xyz,rgbaq,&prim,&base);
  }

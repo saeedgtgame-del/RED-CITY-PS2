@@ -8,6 +8,7 @@
 #include <packet.h>
 #include <graph.h>
 #include <draw.h>
+#include <gs_psm.h>
 #include <libpad.h>
 
 #define SCREEN_W 640
@@ -24,7 +25,6 @@ static int px=320, py=250, heading=0;
 static int mission=0, phone_open=0, map_open=0, frame_no=0;
 static int last_select=0, last_start=0, last_cross=0, last_circle=0;
 static int last_up=0, last_down=0, phone_cursor=0;
-static float camera_x=0.0f, camera_y=0.0f;
 static const char *mission_titles[5]={
  "MISSION 1 - RETURN TO CITY",
  "MISSION 2 - OLD GARAGE",
@@ -141,31 +141,6 @@ static void controller_update(void) {
  }
  last_select=sel; last_start=sta; last_cross=cross; last_circle=circle;
  last_up=up; last_down=down;
-}
-static void draw_city(qword_t *q) {
- int i;
- /* Fixed streets and blocks form the first safe city-rendering pass. */
- q=draw_box(q,0,0,SCREEN_W,SCREEN_H,39,62,57);
- q=draw_box(q,0,190,SCREEN_W,92,47,49,51);
- q=draw_box(q,280,45,88,403,47,49,51);
- q=draw_box(q,0,232,SCREEN_W,4,205,185,110);
- q=draw_box(q,322,45,4,403,205,185,110);
- for(i=0;i<CITY_BLOCKS;i++) {
-  int bx=(i%4)*158+10, by=(i/4)*122+20;
-  if(by>160) by+=105;
-  q=draw_box(q,bx,by,112,62,70+(i%3)*8,75+(i%4)*5,78+(i%2)*8);
-  q=draw_box(q,bx+8,by+8,96,5,110,112,105);
-  q=draw_box(q,bx+12,by+22,12,12,125,160,175);
-  q=draw_box(q,bx+38,by+22,12,12,125,160,175);
-  q=draw_box(q,bx+64,by+22,12,12,125,160,175);
- }
- /* Cars: body, roof, windows. */
- q=draw_box(q,115,208,52,25,150,35,30); q=draw_box(q,125,200,30,12,165,175,180);
- q=draw_box(q,450,292,58,25,40,80,145); q=draw_box(q,460,284,34,12,165,175,180);
- /* Sophia placeholder character silhouette, deliberately simple until model pipeline is validated. */
- q=draw_box(q,px-7,py-20,14,25,170,35,42);
- q=draw_box(q,px-6,py-30,12,12,205,170,145);
- q=draw_box(q,px-8,py+5,6,14,25,25,30); q=draw_box(q,px+2,py+5,6,14,25,25,30);
 }
 static void render_frame(void) {
  packet_t *p=packet_init(PACKET_WORDS,PACKET_NORMAL);

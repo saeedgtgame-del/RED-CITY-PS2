@@ -478,12 +478,12 @@ static qword_t *drawCube(qword_t *q, MATRIX viewScreen, VECTOR pos, VECTOR rot,
    int fan[3]={0,j,j+1},v;
    for(v=0;v<3;v++) {
     VECTOR *cv=&src[fan[v]];
-    float w=cv[3];
+    float w=(*cv)[3];
     int oi=outCount++;
     if(w<0.00001f) { outCount-=v+1; break; }
-    tmp[oi][0]=cv[0]/w;
-    tmp[oi][1]=cv[1]/w;
-    tmp[oi][2]=cv[2]/w;
+    tmp[oi][0]=(*cv)[0]/w;
+    tmp[oi][1]=(*cv)[1]/w;
+    tmp[oi][2]=(*cv)[2]/w;
     tmp[oi][3]=1.0f;
     rgbaq[oi].r=(unsigned char)((cr*128)/255);
     rgbaq[oi].g=(unsigned char)((cg*128)/255);

@@ -400,17 +400,58 @@ static void updatePad(void) {
 
 #define MAX_CLIPPED_VERTICES 256
 
-/* Clip a homogeneous polygon against one of the six view-frustum planes.
-   Unlike dropping every triangle that touches a clipped vertex, this keeps
-   the visible part of roads, buildings and other large meshes. */
+/* CPU homogeneous clipping. PS2SDK calculate_vertices() documents that its
+   VU clip-flag detection is still imperfect; clipping each triangle before
+   perspective division avoids turning clipped vertices into screen-origin
+   spikes and preserves the visible part of large roads/buildings. */
+static float clipDistance(const VECTOR v, int plane) {
+ switch(plane) {
+  case 0: return v[0]+v[3]; /* left */
+  case 1: return v[3]-v[0]; /* right */
+  case 2: return v[1]+v[3]; /* bottom */
+  case 3: return v[3]-v[1]; /* top */
+  case 4: return v[2]+v[3]; /* near */
+  default:return v[3]-v[2]; /* far */
+ }
+}
+static int clipPolygonPlane(const VECTOR *in, int count, VECTOR *out, int plane) {
+ int i,n=0;
+ if(count<=0) return 0;
+ for(i=0;i<count;i++) {
+  int prev=(i+count-1)%count;
+  float dc=clipDistance(in[i],plane);
+  float dp=clipDistance(in[prev],plane);
+  int insideC=(dc>=0.0f), insideP=(dp>=0.0f);
+  if(insideC != insideP) {
+   float den=dp-dc;
+   if(fabsf(den)>0.000001f && n<15) {
+    float t=dp/den;
+    int k;
+    for(k=0;k<4;k++) out[n][k]=in[prev][k]+(in[i][k]-in[prev][k])*t;
+    n++;
+   }
+  }
+  if(insideC && n<16) {
+   int k;
+   for(k=0;k<4;k++) out[n][k]=in[i][k];
+   n++;
+  }
+ }
+ return n;
+}
+static void transformClipVertex(VECTOR out, const VECTOR in, MATRIX m) {
+ int k;
+ for(k=0;k<4;k++)
+  out[k]=m[k]*in[0]+m[4+k]*in[1]+m[8+k]*in[2]+m[12+k]*in[3];
+}
+
 static qword_t *drawCube(qword_t *q, MATRIX viewScreen, VECTOR pos, VECTOR rot,
                      float sx,float sy,float sz,int cr,int cg,int cb,
                      VECTOR *tmp, xyz_t *xyz, color_t *rgbaq,
                      prim_t *prim,color_t *base) {
  MATRIX lw,wv,ls;
- int i;
- VECTOR scaled[24];
- color_f_t colours[24];
+ VECTOR scaled[24],clipA[16],clipB[16];
+ int i,outCount=0;
  for(i=0;i<vertex_count;i++) {
   scaled[i][0]=vertices[i][0]*(sx*0.1f);
   scaled[i][1]=vertices[i][1]*(sy*0.1f);
@@ -421,44 +462,44 @@ static qword_t *drawCube(qword_t *q, MATRIX viewScreen, VECTOR pos, VECTOR rot,
  create_world_view(wv,cameraPos,cameraRot);
  create_local_screen(ls,lw,wv,viewScreen);
 
- /* IMPORTANT: create_local_screen() produces the PS2SDK screen-space
-    representation expected by calculate_vertices(). Do not manually clip
-    against +/-w or divide by w here: that transforms screen coordinates a
-    second time and creates giant triangles across the display. */
- calculate_vertices(tmp,vertex_count,scaled,ls);
-
- for(i=0;i<vertex_count;i++) {
-  colours[i].r=cr/255.0f;
-  colours[i].g=cg/255.0f;
-  colours[i].b=cb/255.0f;
-  colours[i].a=1.0f;
- }
- draw_convert_xyz(xyz,2048,2048,32,vertex_count,(vertex_f_t*)tmp);
- draw_convert_rgbq(rgbaq,vertex_count,(vertex_f_t*)tmp,colours,0x80);
-
- q=draw_prim_start(q,0,prim,base);
- /* PS2SDK marks vertices outside the view volume as (0,0,0).
-    Skip only triangles that contain such a clipped vertex; submitting them
-    would connect the clipped point to the screen origin and draw long spikes. */
+ /* Clip each source triangle in homogeneous clip space, before dividing by W. */
  for(i=0;i<points_count;i+=3) {
-  int a=points[i],b=points[i+1],d=points[i+2];
-  int ids[3]={a,b,d},v,invalid=0;
-  /* Guard the GS from invalid/out-of-frustum screen coordinates. */
-  for(v=0;v<3;v++) {
-   int k=ids[v];
-   float x=tmp[k][0],y=tmp[k][1],z=tmp[k][2];
-   if(x!=x || y!=y || z!=z ||
-      x < -1.02f || x > 1.02f ||
-      y < -1.02f || y > 1.02f ||
-      z < -1.02f || z > 1.02f ||
-      (fabsf(x)<0.00001f && fabsf(y)<0.00001f && fabsf(z)<0.00001f)) {
-    invalid=1; break;
+  int ids[3]={points[i],points[i+1],points[i+2]};
+  int n=3,plane,j;
+  VECTOR *src=clipA,*dst=clipB;
+  for(j=0;j<3;j++) transformClipVertex(src[j],scaled[ids[j]],ls);
+  for(plane=0;plane<6 && n>=3;plane++) {
+   n=clipPolygonPlane(src,n,dst,plane);
+   { VECTOR *swap=src; src=dst; dst=swap; }
+  }
+  if(n<3) continue;
+  /* A clipped convex polygon is triangulated as a fan. */
+  for(j=1;j<n-1 && outCount+3<=MAX_CLIPPED_VERTICES;j++) {
+   int fan[3]={0,j,j+1},v;
+   for(v=0;v<3;v++) {
+    VECTOR *cv=&src[fan[v]];
+    float w=cv[3];
+    int oi=outCount++;
+    if(w<0.00001f) { outCount-=v+1; break; }
+    tmp[oi][0]=cv[0]/w;
+    tmp[oi][1]=cv[1]/w;
+    tmp[oi][2]=cv[2]/w;
+    tmp[oi][3]=1.0f;
+    rgbaq[oi].r=(unsigned char)((cr*128)/255);
+    rgbaq[oi].g=(unsigned char)((cg*128)/255);
+    rgbaq[oi].b=(unsigned char)((cb*128)/255);
+    rgbaq[oi].a=0x80;
+    rgbaq[oi].q=1.0f;
    }
   }
-  if(invalid) continue;
-  q->dw[0]=rgbaq[a].rgbaq; q->dw[1]=xyz[a].xyz; q++;
-  q->dw[0]=rgbaq[b].rgbaq; q->dw[1]=xyz[b].xyz; q++;
-  q->dw[0]=rgbaq[d].rgbaq; q->dw[1]=xyz[d].xyz; q++;
+ }
+ if(outCount<=0) return q;
+ draw_convert_xyz(xyz,2048,2048,32,outCount,(vertex_f_t*)tmp);
+ q=draw_prim_start(q,0,prim,base);
+ for(i=0;i<outCount;i++) {
+  q->dw[0]=rgbaq[i].rgbaq;
+  q->dw[1]=xyz[i].xyz;
+  q++;
  }
  q=draw_prim_end(q,2,DRAW_RGBAQ_REGLIST);
  return q;

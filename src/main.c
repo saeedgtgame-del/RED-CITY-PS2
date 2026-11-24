@@ -298,23 +298,16 @@ static void updatePad(void) {
   float rx=((float)pad.rjoy_h-128.0f)/127.0f;
   float ry=((float)pad.rjoy_v-128.0f)/127.0f;
   in.moveX=0.0f; in.moveZ=0.0f; in.turn=0.0f; in.pressed=0; in.held=0;
-  /* Left stick movement with a dead zone; D-pad remains a reliable fallback. */
+  /* Character movement is analog-left ONLY. D-pad is reserved for UI navigation. */
   if(ax>0.14f || ax< -0.14f) in.moveX=ax;
   if(ay>0.14f || ay< -0.14f) in.moveZ=ay;
-  if(!(pad.btns & PAD_LEFT))  in.moveX=-1.0f;
-  if(!(pad.btns & PAD_RIGHT)) in.moveX=1.0f;
-  if(!(pad.btns & PAD_UP))    in.moveZ=-1.0f;
-  if(!(pad.btns & PAD_DOWN))  in.moveZ=1.0f;
-  /* Right stick and shoulder buttons orbit the third-person camera. */
-  /* Firm dead-zone and slower orbit prevent tiny stick noise from spinning the view. */
-  if(padConnected && (rx>0.35f || rx< -0.35f)) cameraYaw+=rx*0.0045f;
-  if(padConnected && (ry>0.35f || ry< -0.35f)) {
-   cameraPitch+=ry*0.0025f;
-   if(cameraPitch<0.18f) cameraPitch=0.18f;
-   if(cameraPitch>0.58f) cameraPitch=0.58f;
+  /* Analog-right is the only free-look camera control. A centered stick never rotates. */
+  if(padConnected && (rx>0.22f || rx< -0.22f)) cameraYaw+=rx*0.0040f;
+  if(padConnected && (ry>0.22f || ry< -0.22f)) {
+   cameraPitch+=ry*0.0022f;
+   if(cameraPitch<0.16f) cameraPitch=0.16f;
+   if(cameraPitch>0.62f) cameraPitch=0.62f;
   }
-  if(padConnected && !(pad.btns & PAD_L1)) cameraYaw-=0.008f;
-  if(padConnected && !(pad.btns & PAD_R1)) cameraYaw+=0.008f;
   if(!(pad.btns & PAD_L2)) in.turn=-1.0f;
   if(!(pad.btns & PAD_R2)) in.turn=1.0f;
   if(!(pad.btns & PAD_CROSS)) in.held=1; /* Cross = sprint */
@@ -373,6 +366,10 @@ static void updatePad(void) {
       float mag=sqrtf(right*right+forward*forward);
       if(mag>1.0f) mag=1.0f;
       if(mag>0.12f) {
+        /* Walking/running gently recenters the camera behind the active character.
+           Right-stick input remains free-look; no idle auto-orbit is applied. */
+        cameraYaw*=0.90f;
+        cameraPitch+= (0.32f-cameraPitch)*0.06f;
         float cs=cosf(cameraYaw), sn=sinf(cameraYaw);
         float worldX=right*cs-forward*sn;
         float worldZ=right*sn-forward*cs;

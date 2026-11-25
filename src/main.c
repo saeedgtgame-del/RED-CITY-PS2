@@ -554,19 +554,14 @@ static void render(void) {
   create_view_screen(viewScreen,graph_aspect_ratio(),-3.0f,3.0f,-2.2f,2.2f,5.0f,2000.0f);
  }
 #ifdef RENDER_DIAGNOSTIC
- /* Minimal renderer isolation: fixed camera, one ground slab, one cube. */
- cameraPos[0]=0.0f; cameraPos[1]=5.0f; cameraPos[2]=24.0f; cameraPos[3]=1.0f;
- cameraRot[0]=atan2f(-7.0f,40.0f); cameraRot[1]=0.0f; cameraRot[2]=0.0f;
+ /* Stage 2 diagnostic: bypass all 3D matrices, clipping and mesh data.
+    Only framebuffer clear + known 2D rectangles are submitted. */
  tag=packets[ctx]->data; q=tag+1;
  renderPacketLimit=tag+RENDER_PACKET_QWORDS-RENDER_PACKET_UI_RESERVE;
  q=draw_disable_tests(q,0,&zbuf);
  q=draw_clear(q,0,2048-SW/2,2048-SH/2,SW,SH,24,32,48);
- q=draw_enable_tests(q,0,&zbuf);
- { VECTOR ground={0.0f,-13.0f,-28.0f,1.0f},zero={0,0,0,1};
-   VECTOR cube={0.0f,-5.0f,-10.0f,1.0f};
-   q=drawCube(q,viewScreen,ground,zero,24.0f,1.0f,48.0f,72,82,92,tmp,xyz,rgbaq,&prim,&base);
-   q=drawCube(q,viewScreen,cube,zero,4.0f,5.0f,4.0f,220,55,65,tmp,xyz,rgbaq,&prim,&base);
- }
+ q=rect(q,80,72,480,368,52,92,132);
+ q=rect(q,210,166,220,180,220,55,65);
  q=draw_finish(q);
  DMATAG_END(tag,(q-tag)-1,0,0,0);
  dma_wait_fast();

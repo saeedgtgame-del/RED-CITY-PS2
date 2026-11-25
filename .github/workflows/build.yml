@@ -21,7 +21,7 @@ jobs:
             -v "$GITHUB_WORKSPACE:/src" \
             -w /src \
             ps2dev/ps2dev:latest \
-            sh -c "apk add --no-cache make && make"
+            sh -c "apk add --no-cache make && make clean && make && make clean && make EE_BIN=RED_CITY_RENDER_TEST.ELF EE_OBJS=src/main_render_test.o"
 
       - name: Find build output
         if: always()

@@ -21,8 +21,13 @@
 #define SH 512
 #define OBJECTS 15
 /* Each cube emits 36 vertices plus GIF setup; the full city can exceed 65k qwords. */
+#ifdef RENDER_DIAGNOSTIC
+#define RENDER_PACKET_QWORDS 4096
+#define RENDER_PACKET_UI_RESERVE 128
+#else
 #define RENDER_PACKET_QWORDS 131072
 #define RENDER_PACKET_UI_RESERVE 2048
+#endif
 static qword_t *renderPacketLimit = 0;
 
 static framebuffer_t frame;
@@ -548,6 +553,26 @@ static void render(void) {
   base.r=128;base.g=128;base.b=128;base.a=128;base.q=1.0f;
   create_view_screen(viewScreen,graph_aspect_ratio(),-3.0f,3.0f,-2.2f,2.2f,5.0f,2000.0f);
  }
+#ifdef RENDER_DIAGNOSTIC
+ /* Minimal renderer isolation: fixed camera, one ground slab, one cube. */
+ cameraPos[0]=0.0f; cameraPos[1]=5.0f; cameraPos[2]=24.0f; cameraPos[3]=1.0f;
+ cameraRot[0]=atan2f(-7.0f,40.0f); cameraRot[1]=0.0f; cameraRot[2]=0.0f;
+ tag=packets[ctx]->data; q=tag+1;
+ renderPacketLimit=tag+RENDER_PACKET_QWORDS-RENDER_PACKET_UI_RESERVE;
+ q=draw_disable_tests(q,0,&zbuf);
+ q=draw_clear(q,0,2048-SW/2,2048-SH/2,SW,SH,24,32,48);
+ q=draw_enable_tests(q,0,&zbuf);
+ { VECTOR ground={0.0f,-13.0f,-28.0f,1.0f},zero={0,0,0,1};
+   VECTOR cube={0.0f,-5.0f,-10.0f,1.0f};
+   q=drawCube(q,viewScreen,ground,zero,24.0f,1.0f,48.0f,72,82,92,tmp,xyz,rgbaq,&prim,&base);
+   q=drawCube(q,viewScreen,cube,zero,4.0f,5.0f,4.0f,220,55,65,tmp,xyz,rgbaq,&prim,&base);
+ }
+ q=draw_finish(q);
+ DMATAG_END(tag,(q-tag)-1,0,0,0);
+ dma_wait_fast();
+ dma_channel_send_chain(DMA_CHANNEL_GIF,tag,q-tag,0,0);
+ ctx^=1; draw_wait_finish(); graph_wait_vsync();
+#else
  /* Third-person follow camera.
     PS2SDK create_world_view() internally negates camera translation and
     rotation. Camera position is placed BEHIND the character's -Z-forward
@@ -1081,15 +1106,21 @@ static void render(void) {
  DMATAG_END(tag,(q-tag)-1,0,0,0);
  dma_wait_fast(); dma_channel_send_chain(DMA_CHANNEL_GIF,tag,q-tag,0,0);
  ctx^=1; draw_wait_finish(); graph_wait_vsync();
+#endif
 }
 int main(void) {
  dma_channel_initialize(DMA_CHANNEL_GIF,NULL,0);
  dma_channel_fast_waits(DMA_CHANNEL_GIF);
  initGS();
+#ifdef RENDER_DIAGNOSTIC
+ initNexonGame();
+ for(;;) render();
+#else
  /* Logo intro is intentionally short while graphics initialize. */
  for(logoFrames=0;logoFrames<180;logoFrames++) showLogo();
  initNexonGame();
  initPad();
  for(;;) { updateWorld(); updatePad(); render(); }
+#endif
  return 0;
 }
